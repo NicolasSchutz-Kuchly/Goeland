@@ -90,119 +90,100 @@ func makeConstraintStruct(ac ConstraintList, s Unif.Substitutions, p ConstraintL
 	return res
 }
 
-/* Append relevant constraint if its consistant with cl and LPO */
-func (cs *ConstraintStruct) appendIfConsistant(c Constraint) bool {
-	if !cs.getAllConstraints().contains(c) {
-		if is_consistant := cs.isConsistantWith(c); is_consistant {
-			debug(
-				Lib.MkLazy(func() string { return fmt.Sprintf("%v is consistant", c.toString()) }),
-			)
-			debug(
-				Lib.MkLazy(func() string { return fmt.Sprintf("CL at the end : %v", cs.toString()) }),
-			)
-			return true
-		} else {
-			debug(
-				Lib.MkLazy(func() string { return fmt.Sprintf("%v is not consistant", c.toString()) }),
-			)
-			debug(
-				Lib.MkLazy(func() string { return fmt.Sprintf("CL at the end : %v", cs.toString()) }),
-			)
-			return false
-		}
+// appendIfConsistent adds c to the struct if it is consistent with the current
+// constraints and LPO ordering. Returns true iff consistent.
+// Skips the check (returns true) if c is already recorded.
+func (cs *ConstraintStruct) appendIfConsistent(c Constraint) bool {
+	if cs.getAllConstraints().contains(c) {
+		return true
 	}
-	return true
+	ok := cs.isConsistentWith(c)
+	debug(Lib.MkLazy(func() string {
+		if ok {
+			return fmt.Sprintf("%v is consistent — %v", c.toString(), cs.toString())
+		}
+		return fmt.Sprintf("%v is not consistent — %v", c.toString(), cs.toString())
+	}))
+	return ok
 }
 
-/* Check if a constraint is consistant with LPO and constraint list + update cl */
-func (cs *ConstraintStruct) isConsistantWith(c Constraint) bool {
-	debug(
-		Lib.MkLazy(func() string { return fmt.Sprintf("Constraint : %v", c.toString()) }),
-	)
+// isConsistentWith checks whether c is compatible with the current substitution
+// and PREC list, and updates the struct if the constraint is accepted.
+func (cs *ConstraintStruct) isConsistentWith(c Constraint) bool {
+	debug(Lib.MkLazy(func() string { return fmt.Sprintf("Constraint : %v", c.toString()) }))
 	switch c.getCType() {
 	case PREC:
-		// Apply subst and check LPO
-		new_c := c.copy()
-		new_c.applySubstitution(cs.getSubst())
-		respect_lpo, is_comparable := new_c.checkLPO()
-		debug(
-			Lib.MkLazy(func() string {
-				return fmt.Sprintf(
-					"Is_comparable : %v, respec_lpo : %v", is_comparable, respect_lpo)
-			}),
-		)
-		if is_comparable {
-			return respect_lpo
-		}
-
-		// If not comparale, check conflict with other constraints
-		new_prec := append(cs.getPrec().Copy(), c)
-		if new_prec.checkConstraintList() {
-			cs.setPrec(new_prec)
-			cs.addAllConstraints(c)
-			return true
-		} else {
-			return false
-		}
-
+		return cs.isConsistentWithPrec(c)
 	case EQ:
-		// Check if the EQ constraint is unifiable
-		subst := Unif.AddUnification(c.getTP().GetT1().Copy(), c.getTP().GetT2().Copy(), Unif.MakeEmptySubstitution())
-		debug(
-			Lib.MkLazy(func() string { return fmt.Sprintf("Candidate subst : %v", subst.ToString()) }),
-		)
-		if subst.Equals(Unif.Failure()) {
-			return false
-		}
-		if subst.IsEmpty() {
-			return true
-		}
-
-		// Simplify it
-		// respect_lpo, is_comparable := c.checkLPO()
-		// if is_comparable {
-		//	return respect_lpo
-		// }
-
-		debug(
-			Lib.MkLazy(func() string {
-				return fmt.Sprintf(
-					"Try to check compatibility : %v (%v and %v) and %v",
-					subst.ToString(),
-					c.getTP().GetT1().ToString(),
-					c.getTP().GetT2().ToString(),
-					cs.getSubst().ToString(),
-				)
-			}),
-		)
-		// Add it to subst and check unification consistency
-		subst_all := Unif.AddUnification(c.getTP().GetT1(), c.getTP().GetT2(), cs.getSubst())
-		debug(
-			Lib.MkLazy(func() string { return fmt.Sprintf("Subst all : %v", subst_all.ToString()) }),
-		)
-		if subst_all.Equals(Unif.Failure()) {
-			return false
-		}
-		if subst_all.IsEmpty() {
-			return true
-		}
-
-		// Apply new global subst to prec
-		debug(Lib.MkLazy(func() string { return "Check if consistant with the whole cl" }))
-		if !cs.getPrec().isConsistantWithSubst(subst_all) {
-			debug(Lib.MkLazy(func() string { return "Not consistant with the whole cl" }))
-			return false
-		}
-
-		// If all is ok, append if
-		cs.setSubst(subst_all)
-		cs.addAllConstraints(c)
-		return true
-
+		return cs.isConsistentWithEQ(c)
 	default:
 		debug(Lib.MkLazy(func() string { return "Constraint type unknown" }))
 		return false
 	}
 }
 
-// TODO : append if not contains
+// isConsistentWithPrec handles a PREC constraint.
+// After applying the current substitution, two cases arise:
+//  1. Ground-comparable by LPO: accept iff respected, then cross-check deferred list.
+//  2. Not yet comparable (free metas remain): defer it after a symbolic conflict check.
+func (cs *ConstraintStruct) isConsistentWithPrec(c Constraint) bool {
+	instantiated := c.copy()
+	instantiated.applySubstitution(cs.getSubst())
+
+	respect_lpo, is_comparable := instantiated.checkLPO()
+	debug(Lib.MkLazy(func() string {
+		return fmt.Sprintf("is_comparable: %v, respect_lpo: %v", is_comparable, respect_lpo)
+	}))
+
+	if is_comparable {
+		if !respect_lpo {
+			return false
+		}
+		// Satisfied by LPO, but must cross-check deferred constraints:
+		// a ground fact like (a ≺ f(X)) could contradict a deferred (f(X) ≺ a).
+		return append(cs.getPrec(), instantiated).checkConstraintList()
+	}
+
+	// Not yet comparable — defer it if no symbolic contradiction exists.
+	newPrec := append(cs.getPrec(), c)
+	if !newPrec.checkConstraintList() {
+		return false
+	}
+	cs.setPrec(newPrec)
+	cs.addAllConstraints(c)
+	return true
+}
+
+// isConsistentWithEQ handles an EQ (unification) constraint.
+// Checks unifiability against the existing substitution, then verifies that
+// the merged substitution does not violate any deferred PREC constraint.
+func (cs *ConstraintStruct) isConsistentWithEQ(c Constraint) bool {
+	t1, t2 := c.getTP().GetT1(), c.getTP().GetT2()
+
+	// Fast path: isolated unifiability check before touching global state.
+	if Unif.AddUnification(t1.Copy(), t2.Copy(), Unif.MakeEmptySubstitution()).Equals(Unif.Failure()) {
+		return false
+	}
+
+	// Merge with the global substitution.
+	subst_all := Unif.AddUnification(t1, t2, cs.getSubst())
+	debug(Lib.MkLazy(func() string { return fmt.Sprintf("Subst all: %v", subst_all.ToString()) }))
+
+	if subst_all.Equals(Unif.Failure()) {
+		return false
+	}
+	if subst_all.IsEmpty() {
+		return true
+	}
+
+	// Ensure the merged substitution doesn't break any deferred PREC constraint.
+	debug(Lib.MkLazy(func() string { return "Check if consistent with the whole cl" }))
+	if !cs.getPrec().isConsistentWithSubst(subst_all) {
+		debug(Lib.MkLazy(func() string { return "Not consistent with the whole cl" }))
+		return false
+	}
+
+	cs.setSubst(subst_all)
+	cs.addAllConstraints(c)
+	return true
+}

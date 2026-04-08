@@ -84,7 +84,7 @@ func equalityReasoningProblem(ep EqualityProblem, father_chan chan answerEP, las
 	substs_res := []Unif.Substitutions{}
 	unif_found := false
 
-	// Check if an unification exist between s and t and if its consistant with constraints
+	// Check if an unification exist between s and t and if its consistent with constraints
 	if last_applied_rule_type == RIGHT {
 		check_unif_found, check_unif_substs_res := checkUnif(ep)
 		if check_unif_found {

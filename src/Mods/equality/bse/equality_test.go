@@ -42,72 +42,72 @@ import (
 	"testing"
 	"time"
 
-	"github.com/GoelandProver/Goeland/Core"
+	"github.com/GoelandProver/Goeland/AST"
 	"github.com/GoelandProver/Goeland/Glob"
 	"github.com/GoelandProver/Goeland/Lib"
+	"github.com/GoelandProver/Goeland/Mods/equality/eqStruct"
 	"github.com/GoelandProver/Goeland/Typing"
 	"github.com/GoelandProver/Goeland/Unif"
-	"github.com/GoelandProver/Goeland/equality/eqStruct"
 )
 
 // Code trees
-var tp, tn Core.DataStructure
+var tp, tn Unif.DataStructure
 
 // Id
-var p_id Core.Id
-var g_id Core.Id
-var f_id Core.Id
-var a_id Core.Id
-var b_id Core.Id
-var c_id Core.Id
-var d_id Core.Id
-var c1_id Core.Id
-var c2_id Core.Id
+var p_id AST.Id
+var g_id AST.Id
+var f_id AST.Id
+var a_id AST.Id
+var b_id AST.Id
+var c_id AST.Id
+var d_id AST.Id
+var c1_id AST.Id
+var c2_id AST.Id
 
 // Meta
-var x Core.Meta
-var y Core.Meta
-var z Core.Meta
-var z1 Core.Meta
-var z2 Core.Meta
-var z3 Core.Meta
+var x AST.Meta
+var y AST.Meta
+var z AST.Meta
+var z1 AST.Meta
+var z2 AST.Meta
+var z3 AST.Meta
 
 // Const
-var a Core.Fun
-var b Core.Fun
-var c Core.Fun
-var d Core.Fun
-var c1 Core.Fun
-var c2 Core.Fun
+var a AST.Fun
+var b AST.Fun
+var c AST.Fun
+var d AST.Fun
+var c1 AST.Fun
+var c2 AST.Fun
 
 // Fun
-var gx Core.Fun
-var ga Core.Fun
-var fx Core.Fun
-var fy Core.Fun
-var fa Core.Fun
-var fb Core.Fun
-var fc Core.Fun
+var gx AST.Fun
+var ga AST.Fun
+var fx AST.Fun
+var fy AST.Fun
+var fa AST.Fun
+var fb AST.Fun
+var fc AST.Fun
 
-var ggx Core.Fun
-var gga Core.Fun
-var gfy Core.Fun
-var gfa Core.Fun
-var fxy Core.Fun
-var fyz Core.Fun
-var ffx Core.Fun
-var fxa Core.Fun
-var fay Core.Fun
-var fab Core.Fun
-var fbc Core.Fun
-var fcd Core.Fun
+var ggx AST.Fun
+var gga AST.Fun
+var gfy AST.Fun
+var gfa AST.Fun
+var fxy AST.Fun
+var fyz AST.Fun
+var ffx AST.Fun
+var fxa AST.Fun
+var fay AST.Fun
+var fab AST.Fun
+var fbc AST.Fun
+var fcd AST.Fun
 
-var gggx Core.Fun
+var gggx AST.Fun
 
-var f_fxy_z Core.Fun
-var f_x_fyz Core.Fun
-var f_fab_c Core.Fun
-var f_a_fbc Core.Fun
+var f_fxy_z AST.Fun
+var f_x_fyz AST.Fun
+var f_fab_c AST.Fun
+var f_a_fbc AST.Fun
 
 // Equalities
 var eq_x_y AST.Pred
@@ -149,102 +149,210 @@ var not_pcd AST.Form
 
 func initTestVariable() {
 	// Id
-	p_id = Core.MakerId("P")
-	g_id = Core.MakerId("g")
-	f_id = Core.MakerId("f")
-	a_id = Core.MakerId("a")
-	b_id = Core.MakerId("b")
-	c_id = Core.MakerId("c")
-	d_id = Core.MakerId("d")
-	c1_id = Core.MakerId("c1")
-	c2_id = Core.MakerId("c2")
+	p_id = AST.MakerId("P")
+	g_id = AST.MakerId("g")
+	f_id = AST.MakerId("f")
+	a_id = AST.MakerId("a")
+	b_id = AST.MakerId("b")
+	c_id = AST.MakerId("c")
+	d_id = AST.MakerId("d")
+	c1_id = AST.MakerId("c1")
+	c2_id = AST.MakerId("c2")
 
 	// Meta
-	x = Core.MakerMeta("X", -1)
-	y = Core.MakerMeta("Y", -1)
-	z = Core.MakerMeta("Z", -1)
-	z1 = Core.MakerMeta("Z1", -1)
-	z2 = Core.MakerMeta("Z2", -1)
-	z3 = Core.MakerMeta("Z3", -1)
+	x = AST.MakerMeta("X", -1, AST.TIndividual())
+	y = AST.MakerMeta("Y", -1, AST.TIndividual())
+	z = AST.MakerMeta("Z", -1, AST.TIndividual())
+	z1 = AST.MakerMeta("Z1", -1, AST.TIndividual())
+	z2 = AST.MakerMeta("Z2", -1, AST.TIndividual())
+	z3 = AST.MakerMeta("Z3", -1, AST.TIndividual())
 
 	// Const
-	a = Core.MakerConst(a_id)
-	b = Core.MakerConst(b_id)
-	c = Core.MakerConst(c_id)
-	d = Core.MakerConst(d_id)
-	c1 = Core.MakerConst(c1_id)
-	c2 = Core.MakerConst(c2_id)
+	a = AST.MakerConst(a_id)
+	b = AST.MakerConst(b_id)
+	c = AST.MakerConst(c_id)
+	d = AST.MakerConst(d_id)
+	c1 = AST.MakerConst(c1_id)
+	c2 = AST.MakerConst(c2_id)
 
 	// Fun
-	gx = Core.MakerFun(g_id, Core.NewTermList(x), []Typing.TypeApp{})
-	ga = Core.MakerFun(g_id, Core.NewTermList(a), []Typing.TypeApp{})
-	fx = Core.MakerFun(f_id, Core.NewTermList(x), []Typing.TypeApp{})
-	fy = Core.MakerFun(f_id, Core.NewTermList(y), []Typing.TypeApp{})
-	fa = Core.MakerFun(f_id, Core.NewTermList(a), []Typing.TypeApp{})
-	fb = Core.MakerFun(f_id, Core.NewTermList(b), []Typing.TypeApp{})
-	fc = Core.MakerFun(f_id, Core.NewTermList(c), []Typing.TypeApp{})
+	gx = AST.MakerFun(g_id, Lib.MkListV(x.GetTy()), Lib.MkListV[AST.Term](x))
+	ga = AST.MakerFun(g_id, a.GetTyArgs(), Lib.MkListV[AST.Term](a))
+	fx = AST.MakerFun(f_id, Lib.MkListV(x.GetTy()), Lib.MkListV[AST.Term](x))
+	fy = AST.MakerFun(f_id, Lib.MkListV(y.GetTy()), Lib.MkListV[AST.Term](y))
+	fa = AST.MakerFun(f_id, a.GetTyArgs(), Lib.MkListV[AST.Term](a))
+	fb = AST.MakerFun(f_id, b.GetTyArgs(), Lib.MkListV[AST.Term](b))
+	fc = AST.MakerFun(f_id, c.GetTyArgs(), Lib.MkListV[AST.Term](c))
 
-	ggx = Core.MakerFun(g_id, Core.NewTermList(gx), []Typing.TypeApp{})
-	gga = Core.MakerFun(g_id, Core.NewTermList(ga), []Typing.TypeApp{})
-	gfy = Core.MakerFun(g_id, Core.NewTermList(fy), []Typing.TypeApp{})
-	gfa = Core.MakerFun(g_id, Core.NewTermList(fa), []Typing.TypeApp{})
-	fxy = Core.MakerFun(f_id, Core.NewTermList(x, y), []Typing.TypeApp{})
-	fyz = Core.MakerFun(f_id, Core.NewTermList(y, z), []Typing.TypeApp{})
-	ffx = Core.MakerFun(f_id, Core.NewTermList(fx), []Typing.TypeApp{})
-	fxa = Core.MakerFun(f_id, Core.NewTermList(x, a), []Typing.TypeApp{})
-	fay = Core.MakerFun(f_id, Core.NewTermList(a, y), []Typing.TypeApp{})
-	fab = Core.MakerFun(f_id, Core.NewTermList(a, b), []Typing.TypeApp{})
-	fbc = Core.MakerFun(f_id, Core.NewTermList(b, c), []Typing.TypeApp{})
-	fcd = Core.MakerFun(f_id, Core.NewTermList(c, d), []Typing.TypeApp{})
+	ggx = AST.MakerFun(g_id, gx.GetTyArgs(), Lib.MkListV[AST.Term](gx))
+	gga = AST.MakerFun(g_id, ga.GetTyArgs(), Lib.MkListV[AST.Term](ga))
+	gfy = AST.MakerFun(g_id, fy.GetTyArgs(), Lib.MkListV[AST.Term](fy))
+	gfa = AST.MakerFun(g_id, fa.GetTyArgs(), Lib.MkListV[AST.Term](fa))
+	fxy = AST.MakerFun(f_id, Lib.MkListV(x.GetTy(), y.GetTy()), Lib.MkListV[AST.Term](x, y))
+	fyz = AST.MakerFun(f_id, Lib.MkListV(x.GetTy(), z.GetTy()), Lib.MkListV[AST.Term](x, z))
+	ffx = AST.MakerFun(f_id, fx.GetTyArgs(), Lib.MkListV[AST.Term](fx))
 
-	gggx = Core.MakerFun(g_id, Core.NewTermList(ggx), []Typing.TypeApp{})
+	x_a_type_list := Lib.MkListV[AST.Ty](x.GetTy())
+	x_a_type_list.Append(a.GetTyArgs().GetSlice()...)
+	fxa = AST.MakerFun(f_id, x_a_type_list, Lib.MkListV[AST.Term](x, a))
 
-	f_fxy_z = Core.MakerFun(f_id, Core.NewTermList(fxy, z), []Typing.TypeApp{})
-	f_x_fyz = Core.MakerFun(f_id, Core.NewTermList(x, fyz), []Typing.TypeApp{})
-	f_fab_c = Core.MakerFun(f_id, Core.NewTermList(fab, c), []Typing.TypeApp{})
-	f_a_fbc = Core.MakerFun(f_id, Core.NewTermList(a, fbc), []Typing.TypeApp{})
+	a_y_type_list := a.GetTyArgs()
+	a_y_type_list.Append(y.GetTy())
+	fay = AST.MakerFun(f_id, a_y_type_list,  Lib.MkListV[AST.Term](a, y))
+
+	a_b_type_list := a.GetTyArgs()
+	a_b_type_list.Append(b.GetTyArgs().GetSlice()...)
+	fab = AST.MakerFun(f_id, a_b_type_list, Lib.MkListV[AST.Term](a, b))
+
+	bc_type_list := b.GetTyArgs()
+	bc_type_list.Append(c.GetTyArgs().GetSlice()...)
+	fbc = AST.MakerFun(f_id, bc_type_list, Lib.MkListV[AST.Term](b, c))
+
+	cd_type_list := c.GetTyArgs()
+	cd_type_list.Append(d.GetTyArgs().GetSlice()...)
+	fcd = AST.MakerFun(f_id, cd_type_list, Lib.MkListV[AST.Term](c, d))
+
+	gggx = AST.MakerFun(g_id, ggx.GetTyArgs(), Lib.MkListV[AST.Term](ggx))
+
+	fxy_z_type_list := fxy.GetTyArgs()
+	fxy_z_type_list.Append(z.GetTy())
+	f_fxy_z = AST.MakerFun(f_id, fxy_z_type_list, Lib.MkListV[AST.Term](fxy, z))
+
+	x_fyz_type_list := Lib.MkListV[AST.Ty](x.GetTy())
+	x_fyz_type_list.Append(fyz.GetTyArgs().GetSlice()...)
+	f_x_fyz = AST.MakerFun(f_id, x_fyz_type_list, Lib.MkListV[AST.Term](x, fyz))
+	
+	fab_c_type_list := fab.GetTyArgs()
+	fab_c_type_list.Append(c.GetTyArgs().GetSlice()...)
+	f_fab_c = AST.MakerFun(f_id, fab_c_type_list, Lib.MkListV[AST.Term](fab, c))
+	
+	a_fbc_type_list := a.GetTyArgs()
+	a_fbc_type_list.Append(fbc.GetTyArgs().GetSlice()...)
+	f_a_fbc = AST.MakerFun(f_id, a_fbc_type_list, Lib.MkListV[AST.Term](a, fbc))
 
 	// Equalities
-	eq_x_y = Core.MakerPred(AST.Id_eq, Core.NewTermList(x, y), []Typing.TypeApp{})
-	eq_x_a = Core.MakerPred(AST.Id_eq, Core.NewTermList(x, a), []Typing.TypeApp{})
-	eq_y_a = Core.MakerPred(AST.Id_eq, Core.NewTermList(y, a), []Typing.TypeApp{})
-	eq_z1_c1 = Core.MakerPred(AST.Id_eq, Core.NewTermList(z1, c1), []Typing.TypeApp{})
-	eq_z1_c2 = Core.MakerPred(AST.Id_eq, Core.NewTermList(z1, c2), []Typing.TypeApp{})
-	eq_z2_c1 = Core.MakerPred(AST.Id_eq, Core.NewTermList(z2, c1), []Typing.TypeApp{})
-	eq_z3_c1 = Core.MakerPred(AST.Id_eq, Core.NewTermList(z3, c1), []Typing.TypeApp{})
+	eq_x_y = AST.MakerPred(AST.Id_eq, Lib.MkListV(x.GetTy(), y.GetTy()), Lib.MkListV[AST.Term](x, y))
+	eq_x_a = AST.MakerPred(AST.Id_eq, x_a_type_list, Lib.MkListV[AST.Term](x, a))
 
-	eq_ggx_fa = Core.MakerPred(AST.Id_eq, Core.NewTermList(ggx, fa), []Typing.TypeApp{})
-	eq_gfy_y = Core.MakerPred(AST.Id_eq, Core.NewTermList(gfy, y), []Typing.TypeApp{})
-	eq_gx_fx = Core.MakerPred(AST.Id_eq, Core.NewTermList(gx, fx), []Typing.TypeApp{})
-	eq_fa_a = Core.MakerPred(AST.Id_eq, Core.NewTermList(fa, a), []Typing.TypeApp{})
-	eq_a_b = Core.MakerPred(AST.Id_eq, Core.NewTermList(a, b), []Typing.TypeApp{})
-	eq_b_c = Core.MakerPred(AST.Id_eq, Core.NewTermList(b, c), []Typing.TypeApp{})
-	eq_a_c = Core.MakerPred(AST.Id_eq, Core.NewTermList(a, c), []Typing.TypeApp{})
-	eq_b_d = Core.MakerPred(AST.Id_eq, Core.NewTermList(b, d), []Typing.TypeApp{})
-	eq_x_d = Core.MakerPred(AST.Id_eq, Core.NewTermList(x, d), []Typing.TypeApp{})
+	y_a_type_list := Lib.MkListV[AST.Ty](y.GetTy())
+	y_a_type_list.Append(a.GetTyArgs().GetSlice()...)
+	eq_y_a = AST.MakerPred(AST.Id_eq, y_a_type_list, Lib.MkListV[AST.Term](y, a))
 
-	// Inequalites
-	neq_x_a = Core.MakerNot(Core.MakerPred(AST.Id_eq, Core.NewTermList(x, a), []Typing.TypeApp{}))
-	neq_a_b = Core.MakerNot(Core.MakerPred(AST.Id_eq, Core.NewTermList(a, b), []Typing.TypeApp{}))
-	neq_a_d = Core.MakerNot(Core.MakerPred(AST.Id_eq, Core.NewTermList(a, d), []Typing.TypeApp{}))
-	neq_gggx_x = Core.MakerNot(Core.MakerPred(AST.Id_eq, Core.NewTermList(gggx, x), []Typing.TypeApp{}))
-	neq_fx_a = Core.MakerNot(Core.MakerPred(AST.Id_eq, Core.NewTermList(fx, a), []Typing.TypeApp{}))
-	neq_fx_x = Core.MakerNot(Core.MakerPred(AST.Id_eq, Core.NewTermList(fx, x), []Typing.TypeApp{}))
-	neq_fab_fcd = Core.MakerNot(Core.MakerPred(AST.Id_eq, Core.NewTermList(fab, fcd), []Typing.TypeApp{}))
-	neq_fb_fc = Core.MakerNot(Core.MakerPred(AST.Id_eq, Core.NewTermList(fb, fc), []Typing.TypeApp{}))
+	z_c1_type_list := Lib.MkListV[AST.Ty](z.GetTy())
+	z_c1_type_list.Append(c1.GetTyArgs().GetSlice()...)
+
+	eq_z1_c1 = AST.MakerPred(AST.Id_eq, z_c1_type_list, Lib.MkListV[AST.Term](z, c1))
+
+	z1_c2_type_list := Lib.MkListV[AST.Ty](z1.GetTy())
+	z1_c2_type_list.Append(c2.GetTyArgs().GetSlice()...)
+	eq_z1_c2 = AST.MakerPred(AST.Id_eq, z1_c2_type_list, Lib.MkListV[AST.Term](z1, c2))
+
+	z2_c1_type_list := Lib.MkListV[AST.Ty](z2.GetTy())
+	z2_c1_type_list.Append(c1.GetTyArgs().GetSlice()...)
+	eq_z2_c1 = AST.MakerPred(AST.Id_eq, z2_c1_type_list, Lib.MkListV[AST.Term](z2, c1))
+
+	z3_c1_type_list := Lib.MkListV[AST.Ty](z3.GetTy())
+	z3_c1_type_list.Append(c1.GetTyArgs().GetSlice()...)
+	eq_z3_c1 = AST.MakerPred(AST.Id_eq, z3_c1_type_list, Lib.MkListV[AST.Term](z3, c1))
+
+	ggx_fa_type_list := ggx.GetTyArgs()
+	ggx_fa_type_list.Append(fa.GetTyArgs().GetSlice()...)
+	eq_ggx_fa = AST.MakerPred(AST.Id_eq, ggx_fa_type_list, Lib.MkListV[AST.Term](ggx, fa))
+
+	gfy_y_type_list := gfy.GetTyArgs()
+	gfy_y_type_list.Append(y.GetTy())
+	eq_gfy_y = AST.MakerPred(AST.Id_eq, gfy_y_type_list, Lib.MkListV[AST.Term](gfy, y))
+
+	gx_fx_type_list := gx.GetTyArgs()
+	gx_fx_type_list.Append(fx.GetTyArgs().GetSlice()...)
+	eq_gx_fx = AST.MakerPred(AST.Id_eq, gx_fx_type_list, Lib.MkListV[AST.Term](gx, fx))
+
+	fa_a_type_list := fa.GetTyArgs()
+	fa_a_type_list.Append(a.GetTyArgs().GetSlice()...)
+	eq_fa_a = AST.MakerPred(AST.Id_eq, fa_a_type_list, Lib.MkListV[AST.Term](fa, a))
+
+	a_b_type_list2 := a.GetTyArgs()
+	a_b_type_list2.Append(b.GetTyArgs().GetSlice()...)
+	eq_a_b = AST.MakerPred(AST.Id_eq, a_b_type_list2, Lib.MkListV[AST.Term](a, b))
+
+	b_c_type_list := b.GetTyArgs()
+	b_c_type_list.Append(c.GetTyArgs().GetSlice()...)
+	eq_b_c = AST.MakerPred(AST.Id_eq, b_c_type_list, Lib.MkListV[AST.Term](b, c))
+
+	a_c_type_list := a.GetTyArgs()
+	a_c_type_list.Append(c.GetTyArgs().GetSlice()...)
+	eq_a_c = AST.MakerPred(AST.Id_eq, a_c_type_list, Lib.MkListV[AST.Term](a, c))
+
+	b_d_type_list := b.GetTyArgs()
+	b_d_type_list.Append(d.GetTyArgs().GetSlice()...)
+	eq_b_d = AST.MakerPred(AST.Id_eq, b_d_type_list, Lib.MkListV[AST.Term](b, d))
+
+	x_d_type_list := Lib.MkListV[AST.Ty](x.GetTy())
+	x_d_type_list.Append(d.GetTyArgs().GetSlice()...)
+	eq_x_d = AST.MakerPred(AST.Id_eq, x_d_type_list, Lib.MkListV[AST.Term](x, d))
+
+	// Inequalities
+	neq_x_a_type_list := Lib.MkListV[AST.Ty](x.GetTy())
+	neq_x_a_type_list.Append(a.GetTyArgs().GetSlice()...)
+	neq_x_a = AST.MakerNot(AST.MakerPred(AST.Id_eq, neq_x_a_type_list, Lib.MkListV[AST.Term](x, a)))
+
+	neq_a_b_type_list := a.GetTyArgs()
+	neq_a_b_type_list.Append(b.GetTyArgs().GetSlice()...)
+	neq_a_b = AST.MakerNot(AST.MakerPred(AST.Id_eq, neq_a_b_type_list, Lib.MkListV[AST.Term](a, b)))
+
+	neq_a_d_type_list := a.GetTyArgs()
+	neq_a_d_type_list.Append(d.GetTyArgs().GetSlice()...)
+	neq_a_d = AST.MakerNot(AST.MakerPred(AST.Id_eq, neq_a_d_type_list, Lib.MkListV[AST.Term](a, d)))
+
+	neq_gggx_x_type_list := gggx.GetTyArgs()
+	neq_gggx_x_type_list.Append(x.GetTy())
+	neq_gggx_x = AST.MakerNot(AST.MakerPred(AST.Id_eq, neq_gggx_x_type_list, Lib.MkListV[AST.Term](gggx, x)))
+
+	neq_fx_a_type_list := fx.GetTyArgs()
+	neq_fx_a_type_list.Append(a.GetTyArgs().GetSlice()...)
+	neq_fx_a = AST.MakerNot(AST.MakerPred(AST.Id_eq, neq_fx_a_type_list, Lib.MkListV[AST.Term](fx, a)))
+
+	neq_fx_x_type_list := fx.GetTyArgs()
+	neq_fx_x_type_list.Append(x.GetTy())
+	neq_fx_x = AST.MakerNot(AST.MakerPred(AST.Id_eq, neq_fx_x_type_list, Lib.MkListV[AST.Term](fx, x)))
+
+	neq_fab_fcd_type_list := fab.GetTyArgs()
+	neq_fab_fcd_type_list.Append(fcd.GetTyArgs().GetSlice()...)
+	neq_fab_fcd = AST.MakerNot(AST.MakerPred(AST.Id_eq, neq_fab_fcd_type_list, Lib.MkListV[AST.Term](fab, fcd)))
+
+	neq_fb_fc_type_list := fb.GetTyArgs()
+	neq_fb_fc_type_list.Append(fc.GetTyArgs().GetSlice()...)
+	neq_fb_fc = AST.MakerNot(AST.MakerPred(AST.Id_eq, neq_fb_fc_type_list, Lib.MkListV[AST.Term](fb, fc)))
 
 	// Predicates
-	pggab = Core.MakerPred(p_id, Core.NewTermList(gga, b), []Typing.TypeApp{})
-	pac = Core.MakerNot(Core.MakerPred(p_id, Core.NewTermList(a, c), []Typing.TypeApp{}))
-	pa = Core.MakerPred(p_id, Core.NewTermList(a), []Typing.TypeApp{})
-	pb = Core.MakerPred(p_id, Core.NewTermList(b), []Typing.TypeApp{})
-	not_pc = AST.RefuteForm(Core.MakerPred(p_id, Core.NewTermList(c), []Typing.TypeApp{}))
-	pab = Core.MakerPred(p_id, Core.NewTermList(a, b), []Typing.TypeApp{})
-	pax = Core.MakerPred(p_id, Core.NewTermList(a, x), []Typing.TypeApp{})
-	not_pcd = AST.RefuteForm(Core.MakerPred(p_id, Core.NewTermList(c, d), []Typing.TypeApp{}))
+	pggab_type_list := gga.GetTyArgs()
+	pggab_type_list.Append(b.GetTyArgs().GetSlice()...)
+	pggab = AST.MakerPred(p_id, pggab_type_list, Lib.MkListV[AST.Term](gga, b))
+
+	pac_type_list := a.GetTyArgs()
+	pac_type_list.Append(c.GetTyArgs().GetSlice()...)
+	pac = AST.MakerNot(AST.MakerPred(p_id, pac_type_list, Lib.MkListV[AST.Term](a, c)))
+
+	pa = AST.MakerPred(p_id, a.GetTyArgs(), Lib.MkListV[AST.Term](a))
+
+	pb = AST.MakerPred(p_id, b.GetTyArgs(), Lib.MkListV[AST.Term](b))
+
+	not_pc = AST.MakerNot(AST.MakerPred(p_id, c.GetTyArgs(), Lib.MkListV[AST.Term](c)))
+
+	pab_type_list := a.GetTyArgs()
+	pab_type_list.Append(b.GetTyArgs().GetSlice()...)
+	pab = AST.MakerPred(p_id, pab_type_list, Lib.MkListV[AST.Term](a, b))
+
+	pax_type_list := a.GetTyArgs()
+	pax_type_list.Append(x.GetTy())
+	pax = AST.MakerPred(p_id, pax_type_list, Lib.MkListV[AST.Term](a, x))
+
+	not_pcd_type_list := c.GetTyArgs()
+	not_pcd_type_list.Append(d.GetTyArgs().GetSlice()...)
+	not_pcd = AST.MakerNot(AST.MakerPred(p_id, not_pcd_type_list, Lib.MkListV[AST.Term](c, d)))
 }
 
-func initCodeTreesTests(lf *AST.FormList) (Core.DataStructure, Core.DataStructure) {
+func initCodeTreesTests(lf Lib.List[AST.Form]) (Unif.DataStructure, Unif.DataStructure) {
 	tp = Unif.NewNode()
 	tn = Unif.NewNode()
 	tp = tp.MakeDataStruct(lf, true)
@@ -252,10 +360,18 @@ func initCodeTreesTests(lf *AST.FormList) (Core.DataStructure, Core.DataStructur
 	return tp, tn
 }
 
+func initDebuggers() {
+	AST.InitDebugger()
+	InitDebugger()
+	Typing.InitDebugger()
+	Unif.InitDebugger()
+}
+
 func TestMain(m *testing.M) {
 	Glob.SetStart(time.Now())
+	initDebuggers()
+	AST.Init()
 	Typing.Init()
-	Core.Init()
 	initTestVariable()
 	Glob.EnableDebug()
 	code := m.Run()
@@ -271,13 +387,13 @@ func TestAS(t *testing.T) {
 	**/
 
 	// Original problem
-	lf := AST.NewFormList(eq_x_y)
+	lf := Lib.MkListV[AST.Form](eq_x_y)
 	tp, tn = initCodeTreesTests(lf)
 	eq := retrieveEqualities(tp.Copy())
 	ep := makeEqualityProblem(eq, x, y, makeEmptyConstraintStruct())
 
 	// Expected problem
-	lf2 := AST.NewFormList(eq_x_a)
+	lf2 := Lib.MkListV[AST.Form](eq_x_a)
 	tp, tn = initCodeTreesTests(lf2)
 	eq2 := retrieveEqualities(tp.Copy())
 	expected_ep := makeEqualityProblem(eq2, x, a, makeEmptyConstraintStruct())
@@ -286,56 +402,56 @@ func TestAS(t *testing.T) {
 	s.Set(y, a)
 	new_ep := ep.applySubstitution(s)
 
-	Glob.PrintDebug(
-		"TEST_AS",
+	debug(
 		Lib.MkLazy(func() string { return fmt.Sprintf("Current EP : %v", new_ep.ToString()) }),
 	)
-	Glob.PrintDebug(
-		"TEST_AS",
+
+
+	debug(
 		Lib.MkLazy(func() string { return fmt.Sprintf("Expected : %v", expected_ep.ToString()) }),
 	)
 }
 
 /*** Test constraints ***/
 func TestConstraints1(t *testing.T) {
-	/* Not consistant */
+	/* Not consistent */
 	tp_ffx_x := eqStruct.MakeTermPair(ffx, x)
 	constraint_ffx_x := MakeConstraint(PREC, tp_ffx_x)
 	cs := makeEmptyConstraintStruct()
-	append := cs.appendIfConsistant(constraint_ffx_x)
+	append := cs.appendIfConsistent(constraint_ffx_x)
 
 	if append || len(cs.getPrec()) > 0 {
-		t.Fatalf("Error: %v and %v is not the expected PREC list. Expected not consistant and empty PREC list", append, cs.getPrec().toString())
+		t.Fatalf("Error: %v and %v is not the expected PREC list. Expected not consistent and empty PREC list", append, cs.getPrec().toString())
 	}
 }
 
 func TestConstraints2(t *testing.T) {
-	/* Consistant but useless */
+	/* Consistent but useless */
 	tp_x_ffx := eqStruct.MakeTermPair(x, ffx)
 	constraint_x_ffx := MakeConstraint(PREC, tp_x_ffx)
 	cs := makeEmptyConstraintStruct()
-	append := cs.appendIfConsistant(constraint_x_ffx)
+	append := cs.appendIfConsistent(constraint_x_ffx)
 
 	if !append || len(cs.getPrec()) > 0 {
-		t.Fatalf("Error: %v and %v is not the expected PREC list. Expected consistant and empty PREC list", append, cs.getPrec().toString())
+		t.Fatalf("Error: %v and %v is not the expected PREC list. Expected consistent and empty PREC list", append, cs.getPrec().toString())
 	}
 }
 
 func TestConstraints3(t *testing.T) {
-	/* Consistant and relevant */
+	/* Consistent and relevant */
 
 	tp_fx_a := eqStruct.MakeTermPair(fx, a)
 	constraint_fx_a := MakeConstraint(PREC, tp_fx_a)
 	cs := makeEmptyConstraintStruct()
 
-	append := cs.appendIfConsistant(constraint_fx_a)
+	append := cs.appendIfConsistent(constraint_fx_a)
 	if !append || len(cs.getPrec()) != 1 || !cs.getPrec()[0].equals(constraint_fx_a) {
-		t.Fatalf("Error: %v and %v is not the expected PREC list. Expected consistant and %v", append, cs.getPrec().toString(), constraint_fx_a.toString())
+		t.Fatalf("Error: %v and %v is not the expected PREC list. Expected consistent and %v", append, cs.getPrec().toString(), constraint_fx_a.toString())
 	}
 }
 
-func TestConstaints4(t *testing.T) {
-	/* First constraint is consistnt, second not with the first one */
+func TestConstraints4(t *testing.T) {
+	/* First constraint is consistent, second is not consistent with the first one */
 	/*
 	* On accepte les cas comme f(f(x)) < a et a < f(x)
 	 */
@@ -344,16 +460,16 @@ func TestConstaints4(t *testing.T) {
 	constraint_fx_a := MakeConstraint(PREC, tp_fx_a)
 	cs := makeEmptyConstraintStruct()
 
-	res_constraint_1 := cs.appendIfConsistant(constraint_fx_a)
+	res_constraint_1 := cs.appendIfConsistent(constraint_fx_a)
 	if !res_constraint_1 || len(cs.getPrec()) != 1 || !cs.getPrec()[0].equals(constraint_fx_a) {
-		t.Fatalf("Error: %v and %v is not the expected PREC list. Expected consistant and %v", res_constraint_1, cs.getPrec().toString(), constraint_fx_a.toString())
+		t.Fatalf("Error: %v and %v is not the expected PREC list. Expected consistent and %v", res_constraint_1, cs.getPrec().toString(), constraint_fx_a.toString())
 	}
 
 	tp_a_fx := eqStruct.MakeTermPair(a, fx)
 	constraint_a_fx := MakeConstraint(PREC, tp_a_fx)
-	res_constraint_2 := cs.appendIfConsistant(constraint_a_fx)
+	res_constraint_2 := cs.appendIfConsistent(constraint_a_fx)
 	if res_constraint_2 || len(cs.getPrec()) != 1 || !cs.getPrec()[0].equals(constraint_fx_a) {
-		t.Fatalf("Error: %v and %v is not the expected PREC list. Expected not consistant and %v", res_constraint_2, cs.getPrec().toString(), constraint_fx_a.toString())
+		t.Fatalf("Error: %v and %v is not the expected PREC list. Expected not consistent and %v", res_constraint_2, cs.getPrec().toString(), constraint_fx_a.toString())
 	}
 
 }
@@ -361,46 +477,46 @@ func TestConstaints4(t *testing.T) {
 func TestConstraints5(t *testing.T) {
 	cs := makeEmptyConstraintStruct()
 
-	/* Not consistant */
+	/* Not consistent */
 	tp_ffabc_fafbc := eqStruct.MakeTermPair(f_fab_c, f_a_fbc)
 	constraint_ffabc_fafbc := MakeConstraint(PREC, tp_ffabc_fafbc)
-	res_constraint_1 := cs.appendIfConsistant(constraint_ffabc_fafbc)
+	res_constraint_1 := cs.appendIfConsistent(constraint_ffabc_fafbc)
 	if res_constraint_1 || len(cs.getPrec()) > 0 {
-		t.Fatalf("Error: %v and %v is not the expected PREC list. Expected not consistant and empty PREC list", res_constraint_1, cs.getPrec().toString())
+		t.Fatalf("Error: %v and %v is not the expected PREC list. Expected not consistent and empty PREC list", res_constraint_1, cs.getPrec().toString())
 	}
 
-	/* Consistant but not relevant */
+	/* Consistent but not relevant */
 	tp_fafbc_ffabc := eqStruct.MakeTermPair(f_a_fbc, f_fab_c)
 	constraint_fafbc_ffabc := MakeConstraint(PREC, tp_fafbc_ffabc)
-	res_constraint_2 := cs.appendIfConsistant(constraint_fafbc_ffabc)
+	res_constraint_2 := cs.appendIfConsistent(constraint_fafbc_ffabc)
 	if !res_constraint_2 || len(cs.getPrec()) > 0 {
-		t.Fatalf("Error: %v and %v is not the expected PREC list. Expected consistant and empty PREC list", res_constraint_1, cs.getPrec().toString())
+		t.Fatalf("Error: %v and %v is not the expected PREC list. Expected consistent and empty PREC list", res_constraint_1, cs.getPrec().toString())
 	}
 }
 
 func TestConstaintes6(t *testing.T) {
 	cs := makeEmptyConstraintStruct()
 
-	/* consistant but not relevant */
+	/* consistent but not relevant */
 	tp_fxfyz_ffxyz := eqStruct.MakeTermPair(f_x_fyz, f_fxy_z)
 	constraint_fafbc_ffabc := MakeConstraint(PREC, tp_fxfyz_ffxyz)
-	append := cs.appendIfConsistant(constraint_fafbc_ffabc)
+	append := cs.appendIfConsistent(constraint_fafbc_ffabc)
 	if !append || len(cs.getPrec()) > 0 {
-		t.Fatalf("Error: %v and %v is not the expected PREC list. Expected consistant and empty PREC list", append, cs.getPrec().toString())
+		t.Fatalf("Error: %v and %v is not the expected PREC list. Expected consistent and empty PREC list", append, cs.getPrec().toString())
 	}
 }
 
 func TestConstaintes7(t *testing.T) {
 	cs := makeEmptyConstraintStruct()
 
-	/* consistant, should return X,a and Y, b */
+	/* consistent, should return X,a and Y, b */
 	tp_fxy_fab := eqStruct.MakeTermPair(fxy, fab)
 	constraint_fxy_fab := MakeConstraint(EQ, tp_fxy_fab)
 	// append :=
-	cs.appendIfConsistant(constraint_fxy_fab)
+	cs.appendIfConsistent(constraint_fxy_fab)
 	/*
 		if !append || len(cs.getPrec()) > 0 {
-			t.Fatalf("Error: %v and %v is not the expected PREC list. Expected consistant and empty PREC list", append, cs.getPrec().toString())
+			t.Fatalf("Error: %v and %v is not the expected PREC list. Expected consistent and empty PREC list", append, cs.getPrec().toString())
 		}
 	*/
 }
@@ -408,14 +524,14 @@ func TestConstaintes7(t *testing.T) {
 func TestConstaintes8(t *testing.T) {
 	cs := makeEmptyConstraintStruct()
 
-	/* consistant, should return X,a and Y, b */
+	/* consistent, should return X,a and Y, b */
 	tp_fxa_fay := eqStruct.MakeTermPair(fxa, fay)
 	constraint_fxa_fay := MakeConstraint(EQ, tp_fxa_fay)
 	// append :=
-	cs.appendIfConsistant(constraint_fxa_fay)
+	cs.appendIfConsistent(constraint_fxa_fay)
 	/*
 		if !append || len(cs.getPrec()) > 0 {
-			t.Fatalf("Error: %v and %v is not the expected PREC list. Expected consistant and empty PREC list", append, cs.getPrec().toString())
+			t.Fatalf("Error: %v and %v is not the expected PREC list. Expected consistent and empty PREC list", append, cs.getPrec().toString())
 		}
 	*/
 }
@@ -423,14 +539,309 @@ func TestConstaintes8(t *testing.T) {
 func TestConstaintes9(t *testing.T) {
 	cs := makeEmptyConstraintStruct()
 
-	/* consistant, should return X,a and Y, b */
+	/* consistent, should return X,a and Y, b */
 	tp_gga_ggx := eqStruct.MakeTermPair(gga, ggx)
 	constraint_gga_ggx := MakeConstraint(PREC, tp_gga_ggx)
 	// append :=
-	cs.appendIfConsistant(constraint_gga_ggx)
+	cs.appendIfConsistent(constraint_gga_ggx)
 	/*
 		if !append || len(cs.getPrec()) > 0 {
-			t.Fatalf("Error: %v and %v is not the expected PREC list. Expected consistant and empty PREC list", append, cs.getPrec().toString())
+			t.Fatalf("Error: %v and %v is not the expected PREC list. Expected consistent and empty PREC list", append, cs.getPrec().toString())
 		}
 	*/
+}
+
+// ---------------------------------------------------------------------------
+// LPO / PREC edge cases
+// ---------------------------------------------------------------------------
+ 
+// Two identical deferred constraints: the second must be accepted (idempotent).
+// f(X) ≺ a  added twice → still only one entry in prec list.
+func TestConstraints_Idempotent(t *testing.T) {
+	tp_fx_a := eqStruct.MakeTermPair(fx, a)
+	c := MakeConstraint(PREC, tp_fx_a)
+	cs := makeEmptyConstraintStruct()
+ 
+	res1 := cs.appendIfConsistent(c)
+	res2 := cs.appendIfConsistent(c) // duplicate
+ 
+	if !res1 || !res2 {
+		t.Fatalf("Both insertions should return true for a duplicate, got %v %v", res1, res2)
+	}
+	if len(cs.getPrec()) != 1 {
+		t.Fatalf("Duplicate constraint should not grow the prec list; got %v", cs.getPrec().toString())
+	}
+}
+ 
+// Two distinct deferred constraints that are compatible: both must be accepted.
+// f(X) ≺ a  and  g(Y) ≺ b  — different metas, no conflict.
+func TestConstraints_TwoCompatibleDeferred(t *testing.T) {
+	c1 := MakeConstraint(PREC, eqStruct.MakeTermPair(fx, a))
+	c2 := MakeConstraint(PREC, eqStruct.MakeTermPair(fy, b))
+	cs := makeEmptyConstraintStruct()
+ 
+	if !cs.appendIfConsistent(c1) {
+		t.Fatalf("c1 should be consistent")
+	}
+	if !cs.appendIfConsistent(c2) {
+		t.Fatalf("c2 should be consistent with c1")
+	}
+	if len(cs.getPrec()) != 2 {
+		t.Fatalf("Expected 2 deferred constraints, got %v", cs.getPrec().toString())
+	}
+}
+ 
+// g(g(g(X))) ≺ X is an occur-check violation in LPO (X appears inside gggx).
+// Must be rejected.
+func TestConstraints_OccurCheckPREC(t *testing.T) {
+	tp := eqStruct.MakeTermPair(gggx, x)
+	c := MakeConstraint(PREC, tp)
+	cs := makeEmptyConstraintStruct()
+ 
+	if cs.appendIfConsistent(c) {
+		t.Fatalf("ggg(X) ≺ X should be rejected (occur-check)")
+	}
+}
+ 
+// Ground PREC that is trivially satisfied and does not interact with any
+// deferred constraint: a ≺ f(a). Pure ground, f > a, no metas.
+// Expected: consistent, not added to prec list (ground/comparable).
+func TestConstraints_GroundSatisfied(t *testing.T) {
+	tp := eqStruct.MakeTermPair(a, fa)
+	c := MakeConstraint(PREC, tp)
+	cs := makeEmptyConstraintStruct()
+ 
+	if !cs.appendIfConsistent(c) {
+		t.Fatalf("a ≺ f(a) should be consistent (ground, f>a)")
+	}
+	if len(cs.getPrec()) != 0 {
+		t.Fatalf("Ground comparable constraint should not be deferred; prec=%v", cs.getPrec().toString())
+	}
+}
+ 
+// Ground PREC that is violated: f(a) ≺ a. f > a, so f(a) > a in LPO.
+// Expected: rejected.
+func TestConstraints_GroundViolated(t *testing.T) {
+	tp := eqStruct.MakeTermPair(fa, a)
+	c := MakeConstraint(PREC, tp)
+	cs := makeEmptyConstraintStruct()
+ 
+	if cs.appendIfConsistent(c) {
+		t.Fatalf("f(a) ≺ a should be rejected (ground, f>a so f(a)>a)")
+	}
+}
+ 
+// Three-way cycle: X ≺ f(X) is fine, but then adding f(X) ≺ X must fail.
+func TestConstraints_Cycle(t *testing.T) {
+	c_x_fx := MakeConstraint(PREC, eqStruct.MakeTermPair(x, fx))
+	c_fx_x := MakeConstraint(PREC, eqStruct.MakeTermPair(fx, x))
+	cs := makeEmptyConstraintStruct()
+ 
+	// X ≺ f(X): X occurs inside f(X), so this is detected as comparable and
+	// satisfied (occur-check direction), prec list stays empty.
+	if !cs.appendIfConsistent(c_x_fx) {
+		t.Fatalf("X ≺ f(X) should be consistent")
+	}
+	// f(X) ≺ X: occur-check in reverse → must be rejected.
+	if cs.appendIfConsistent(c_fx_x) {
+		t.Fatalf("f(X) ≺ X should be rejected after X ≺ f(X)")
+	}
+}
+ 
+// ---------------------------------------------------------------------------
+// EQ edge cases
+// ---------------------------------------------------------------------------
+ 
+// EQ constraint with already-equal ground terms: a ≃ a → trivially consistent.
+func TestConstraintsEQ_SameTerm(t *testing.T) {
+	c := MakeConstraint(EQ, eqStruct.MakeTermPair(a, a))
+	cs := makeEmptyConstraintStruct()
+ 
+	if !cs.appendIfConsistent(c) {
+		t.Fatalf("a ≃ a should be consistent")
+	}
+}
+ 
+// EQ constraint between two distinct ground constants: a ≃ b → not unifiable.
+func TestConstraintsEQ_GroundConflict(t *testing.T) {
+	c := MakeConstraint(EQ, eqStruct.MakeTermPair(a, b))
+	cs := makeEmptyConstraintStruct()
+ 
+	if cs.appendIfConsistent(c) {
+		t.Fatalf("a ≃ b should be rejected (a ≠ b ground)")
+	}
+}
+ 
+// EQ constraint X ≃ a followed by a PREC constraint f(X) ≺ a.
+// After substituting X→a, f(X) becomes f(a), and f(a) ≺ a is ground-violated.
+// Expected: the PREC is rejected.
+func TestConstraints_EQThenPREC_Conflict(t *testing.T) {
+	cs := makeEmptyConstraintStruct()
+ 
+	cEQ := MakeConstraint(EQ, eqStruct.MakeTermPair(x, a))
+	if !cs.appendIfConsistent(cEQ) {
+		t.Fatalf("X ≃ a should be accepted")
+	}
+ 
+	cPREC := MakeConstraint(PREC, eqStruct.MakeTermPair(fx, a))
+	if cs.appendIfConsistent(cPREC) {
+		t.Fatalf("f(X) ≺ a with X→a means f(a) ≺ a, which is violated — should be rejected")
+	}
+}
+ 
+// EQ constraint X ≃ a followed by a PREC constraint a ≺ f(X).
+// After substituting X→a, a ≺ f(a) is ground-satisfied.
+// Expected: the PREC is accepted.
+func TestConstraints_EQThenPREC_Satisfied(t *testing.T) {
+	cs := makeEmptyConstraintStruct()
+ 
+	cEQ := MakeConstraint(EQ, eqStruct.MakeTermPair(x, a))
+	if !cs.appendIfConsistent(cEQ) {
+		t.Fatalf("X ≃ a should be accepted")
+	}
+ 
+	cPREC := MakeConstraint(PREC, eqStruct.MakeTermPair(a, fx))
+	if !cs.appendIfConsistent(cPREC) {
+		t.Fatalf("a ≺ f(X) with X→a means a ≺ f(a), which is satisfied — should be accepted")
+	}
+}
+ 
+// Deferred PREC f(X) ≺ a, then EQ X ≃ a.
+// Applying X→a to the deferred constraint gives f(a) ≺ a — violated.
+// The EQ must be rejected because it breaks the stored PREC constraint.
+func TestConstraints_PRECThenEQ_Conflict(t *testing.T) {
+	cs := makeEmptyConstraintStruct()
+ 
+	cPREC := MakeConstraint(PREC, eqStruct.MakeTermPair(fx, a))
+	if !cs.appendIfConsistent(cPREC) {
+		t.Fatalf("f(X) ≺ a should be deferred")
+	}
+ 
+	cEQ := MakeConstraint(EQ, eqStruct.MakeTermPair(x, a))
+	if cs.appendIfConsistent(cEQ) {
+		t.Fatalf("X ≃ a should be rejected: it instantiates f(X) ≺ a to f(a) ≺ a which is violated")
+	}
+}
+ 
+// Two conflicting EQ constraints: X ≃ a then X ≃ b.
+// Second should be rejected because the substitution already maps X to a.
+func TestConstraintsEQ_ConflictingSubst(t *testing.T) {
+	cs := makeEmptyConstraintStruct()
+ 
+	c1 := MakeConstraint(EQ, eqStruct.MakeTermPair(x, a))
+	c2 := MakeConstraint(EQ, eqStruct.MakeTermPair(x, b))
+ 
+	if !cs.appendIfConsistent(c1) {
+		t.Fatalf("X ≃ a should be accepted")
+	}
+	if cs.appendIfConsistent(c2) {
+		t.Fatalf("X ≃ b should be rejected: X is already bound to a")
+	}
+}
+ 
+// Two compatible EQ constraints on different metas: X ≃ a then Y ≃ b.
+// Both should be accepted and the substitution should contain both bindings.
+func TestConstraintsEQ_CompatibleSubst(t *testing.T) {
+	cs := makeEmptyConstraintStruct()
+ 
+	c1 := MakeConstraint(EQ, eqStruct.MakeTermPair(x, a))
+	c2 := MakeConstraint(EQ, eqStruct.MakeTermPair(y, b))
+ 
+	if !cs.appendIfConsistent(c1) {
+		t.Fatalf("X ≃ a should be accepted")
+	}
+	if !cs.appendIfConsistent(c2) {
+		t.Fatalf("Y ≃ b should be accepted alongside X ≃ a")
+	}
+ 
+	s := cs.getSubst()
+	xBound := false
+	yBound := false
+	for _, pair := range s {
+		m, t := pair.Get()
+		if m.Equals(x) && t.Equals(a) {
+			xBound = true
+		}
+		if m.Equals(y) && t.Equals(b) {
+			yBound = true
+		}
+	}
+	if !xBound || !yBound {
+		t.Fatalf("Expected substitution {X→a, Y→b}, got %v", s.ToString())
+	}
+}
+ 
+// Substitution applied to a PREC that remains comparable after instantiation,
+// but in the satisfying direction: deferred f(X) ≺ g(a), then X ≃ a.
+// After X→a: f(a) ≺ g(a). f < g so f(a) < g(a) in LPO — satisfied.
+// Expected: EQ accepted, prec list cleared (constraint resolved).
+func TestConstraints_PRECResolvedByEQ(t *testing.T) {
+	cs := makeEmptyConstraintStruct()
+ 
+	// f(X) ≺ g(a): f < g, but X is free → deferred
+	cPREC := MakeConstraint(PREC, eqStruct.MakeTermPair(fx, ga))
+	if !cs.appendIfConsistent(cPREC) {
+		t.Fatalf("f(X) ≺ g(a) should be deferred as consistent")
+	}
+	if len(cs.getPrec()) != 1 {
+		t.Fatalf("f(X) ≺ g(a) should be in the prec list, got %v", cs.getPrec().toString())
+	}
+ 
+	// X ≃ a: should be accepted; after applying, the deferred PREC is satisfied.
+	cEQ := MakeConstraint(EQ, eqStruct.MakeTermPair(x, a))
+	if !cs.appendIfConsistent(cEQ) {
+		t.Fatalf("X ≃ a should be accepted; it resolves f(X) ≺ g(a) to f(a) ≺ g(a) which holds")
+	}
+}
+ 
+// Empty constraint struct — isEmpty must hold.
+func TestConstraintStruct_Empty(t *testing.T) {
+	cs := makeEmptyConstraintStruct()
+	if !cs.isEmpty() {
+		t.Fatalf("Fresh constraint struct should be empty")
+	}
+}
+ 
+// After a successful PREC insertion the struct is no longer empty.
+func TestConstraintStruct_NotEmptyAfterInsert(t *testing.T) {
+	cs := makeEmptyConstraintStruct()
+	c := MakeConstraint(PREC, eqStruct.MakeTermPair(fx, a))
+	cs.appendIfConsistent(c)
+	if cs.isEmpty() {
+		t.Fatalf("Struct should not be empty after inserting a deferred constraint")
+	}
+}
+ 
+// copy() must produce a deep copy: mutating the copy must not affect the original.
+func TestConstraintStruct_Copy(t *testing.T) {
+	cs := makeEmptyConstraintStruct()
+	c := MakeConstraint(PREC, eqStruct.MakeTermPair(fx, a))
+	cs.appendIfConsistent(c)
+ 
+	csCopy := cs.copy()
+ 
+	// Add a new constraint only to the copy.
+	c2 := MakeConstraint(PREC, eqStruct.MakeTermPair(fy, b))
+	csCopy.appendIfConsistent(c2)
+ 
+	if len(cs.getPrec()) != 1 {
+		t.Fatalf("Original prec list should still have 1 element after mutating the copy; got %v", cs.getPrec().toString())
+	}
+	if len(csCopy.getPrec()) != 2 {
+		t.Fatalf("Copy prec list should have 2 elements; got %v", csCopy.getPrec().toString())
+	}
+}
+ 
+// A substitution that maps X to itself (identity) should be treated as empty/trivial.
+func TestConstraintsEQ_IdentitySubst(t *testing.T) {
+	cs := makeEmptyConstraintStruct()
+	s := Unif.MakeEmptySubstitution()
+	s.Set(x, x)
+	cs.setSubst(s)
+ 
+	// f(X) ≺ a with a substitution that maps X→X: effectively no change.
+	cPREC := MakeConstraint(PREC, eqStruct.MakeTermPair(fx, a))
+	if !cs.appendIfConsistent(cPREC) {
+		t.Fatalf("f(X) ≺ a should still be deferred as consistent with identity subst")
+	}
 }

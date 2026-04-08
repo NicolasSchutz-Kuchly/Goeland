@@ -70,9 +70,9 @@ func applyLeftRule(rs ruleStruct, ep EqualityProblem, father_chan chan answerEP,
 	debug(
 		Lib.MkLazy(func() string { return "Apply left rule" }),
 	)
-	is_consistant_with_lpo, new_term, new_cl := applyEQRule(rs.getL(), rs.getR(), rs.getLPrime(), rs.getS(), rs.getT(), ep.getC())
+	is_consistent_with_lpo, new_term, new_cl := applyEQRule(rs.getL(), rs.getR(), rs.getLPrime(), rs.getS(), rs.getT(), ep.getC())
 
-	if is_consistant_with_lpo {
+	if is_consistent_with_lpo {
 		debug(
 			Lib.MkLazy(func() string { return fmt.Sprintf("New term : %v", new_term.ToString()) }),
 		)
@@ -88,7 +88,7 @@ func applyLeftRule(rs ruleStruct, ep EqualityProblem, father_chan chan answerEP,
 		tryEqualityReasoningProblem(makeEqualityProblem(new_eq_list, ep.GetS(), ep.GetT(), new_cl), father_chan, rs.getIndexEQList(), LEFT, father_id)
 	} else {
 		debug(
-			Lib.MkLazy(func() string { return "Not consistant with LPO, send nil" }),
+			Lib.MkLazy(func() string { return "Not consistent with LPO, send nil" }),
 		)
 		father_chan <- makeEmptyAnswerEP()
 		debug(Lib.MkLazy(func() string { return "Die" }))
@@ -101,9 +101,9 @@ func applyRightRule(rs ruleStruct, ep EqualityProblem, father_chan chan answerEP
 		Lib.MkLazy(func() string { return "Apply right rule" }),
 	)
 
-	is_consistant_with_lpo, new_term, new_cl := applyEQRule(rs.getL(), rs.getR(), rs.getLPrime(), rs.getS(), rs.getT(), ep.getC())
+	is_consistent_with_lpo, new_term, new_cl := applyEQRule(rs.getL(), rs.getR(), rs.getLPrime(), rs.getS(), rs.getT(), ep.getC())
 
-	if is_consistant_with_lpo {
+	if is_consistent_with_lpo {
 		debug(
 			Lib.MkLazy(func() string { return fmt.Sprintf("New term : %v", new_term.ToString()) }),
 		)
@@ -114,7 +114,7 @@ func applyRightRule(rs ruleStruct, ep EqualityProblem, father_chan chan answerEP
 		}
 	} else {
 		debug(
-			Lib.MkLazy(func() string { return "Not consistant with LPO, send nil" }),
+			Lib.MkLazy(func() string { return "Not consistent with LPO, send nil" }),
 		)
 		father_chan <- makeEmptyAnswerEP()
 		debug(Lib.MkLazy(func() string { return "Die" }))
@@ -144,13 +144,13 @@ func applyEQRule(l, r, sub_term_of_s, s, t AST.Term, cs ConstraintStruct) (bool,
 	)
 	constraints_list := cs.copy()
 
-	if !constraints_list.appendIfConsistant(MakeConstraint(PREC, eqStruct.MakeTermPair(r, l))) {
+	if !constraints_list.appendIfConsistent(MakeConstraint(PREC, eqStruct.MakeTermPair(r, l))) {
 		return false, nil, makeEmptyConstraintStruct()
 	}
-	if !constraints_list.appendIfConsistant(MakeConstraint(PREC, eqStruct.MakeTermPair(t, s))) {
+	if !constraints_list.appendIfConsistent(MakeConstraint(PREC, eqStruct.MakeTermPair(t, s))) {
 		return false, nil, makeEmptyConstraintStruct()
 	}
-	if !constraints_list.appendIfConsistant(MakeConstraint(EQ, eqStruct.MakeTermPair(l, sub_term_of_s))) {
+	if !constraints_list.appendIfConsistent(MakeConstraint(EQ, eqStruct.MakeTermPair(l, sub_term_of_s))) {
 		return false, nil, makeEmptyConstraintStruct()
 	}
 	return true, new_s, constraints_list

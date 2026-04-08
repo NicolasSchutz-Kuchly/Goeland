@@ -86,10 +86,10 @@ func makeEmptyConstaintsList() ConstraintList {
 	return ConstraintList{}
 }
 
-/* Check if a constraint is consistant with LPO and constraint list */
-func (cl ConstraintList) isConsistantWithSubst(s Unif.Substitutions) bool {
+/* Check if a constraint is consistent with LPO and constraint list */
+func (cl ConstraintList) isConsistentWithSubst(s Unif.Substitutions) bool {
 	debug(
-		Lib.MkLazy(func() string { return fmt.Sprintf("Is consistant with the subst : %v", s.ToString()) }),
+		Lib.MkLazy(func() string { return fmt.Sprintf("Is consistent with the subst : %v", s.ToString()) }),
 	)
 	for _, c_element := range cl {
 		c := c_element.copy()

@@ -79,12 +79,12 @@ func checkUnif(ep EqualityProblem) (found bool, substs_res []Unif.Substitutions)
 		debug(Lib.MkLazy(func() string { return "Unif found !" }))
 		new_subst := Unif.AddUnification(ep.GetS(), ep.GetT(), ep.getC().getSubst())
 		if !new_subst.Equals(Unif.Failure()) {
-			is_consistant := ep.c.getPrec().isConsistantWithSubst(new_subst)
-			if is_consistant {
+			is_consistent := ep.c.getPrec().isConsistentWithSubst(new_subst)
+			if is_consistent {
 				debug(
 					Lib.MkLazy(func() string {
 						return fmt.Sprintf(
-							"Unif found and consistant : %v", new_subst.ToString())
+							"Unif found and consistent : %v", new_subst.ToString())
 					}),
 				)
 				found = true
@@ -93,7 +93,7 @@ func checkUnif(ep EqualityProblem) (found bool, substs_res []Unif.Substitutions)
 				debug(
 					Lib.MkLazy(func() string {
 						return fmt.Sprintf(
-							"Unif found but not consistant : %v", subst_found.ToString())
+							"Unif found but not consistent : %v", subst_found.ToString())
 					}),
 				)
 			}
@@ -101,7 +101,7 @@ func checkUnif(ep EqualityProblem) (found bool, substs_res []Unif.Substitutions)
 			debug(
 				Lib.MkLazy(func() string {
 					return fmt.Sprintf(
-						"Unif found but not consistant with other unifications : %v", subst_found.ToString())
+						"Unif found but not consistent with other unifications : %v", subst_found.ToString())
 				}),
 			)
 		}

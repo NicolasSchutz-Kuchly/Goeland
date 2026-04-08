@@ -316,5 +316,11 @@ func caseDefault(s, t AST.Fun) compareStruct {
 		return makeCompareStruct(1, true, nil, nil)
 	}
 
+	// s > t is only decidable when s is ground; if s contains metavariables
+	// the ordering cannot be determined yet — defer to the constraint list.
+	if !s.GetMetas().IsEmpty() {
+		return makeCompareStruct(0, false, s, t)
+	}
+
 	return makeCompareStruct(-1, true, nil, nil)
 }
