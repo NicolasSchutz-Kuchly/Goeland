@@ -34,7 +34,7 @@
 * This file contains the type definition of the contraint list.
 **/
 
-package equality
+package bse
 
 import (
 	"fmt"

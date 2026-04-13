@@ -12,7 +12,8 @@ import (
 	"github.com/GoelandProver/Goeland/Lib"
 	"github.com/GoelandProver/Goeland/Mods/assisted"
 	"github.com/GoelandProver/Goeland/Mods/dmt"
-	equality "github.com/GoelandProver/Goeland/Mods/equality/bse"
+	"github.com/GoelandProver/Goeland/Mods/equality/bse"
+	"github.com/GoelandProver/Goeland/Mods/equality/cc"
 	"github.com/GoelandProver/Goeland/Mods/equality/sateq"
 	"github.com/GoelandProver/Goeland/Mods/gs3"
 	"github.com/GoelandProver/Goeland/Mods/lambdapi"
@@ -221,7 +222,7 @@ func buildOptions() {
 		func(bool) {},
 		func(noeq bool) {
 			if !noeq {
-				equality.Enable()
+				bse.Enable()
 			}
 		})
 	(&option[bool]{}).init(
@@ -334,8 +335,17 @@ func buildOptions() {
 		false,
 		"Enables the equality unification using a SAT reduction. Will override the use of -noeq",
 		func(bool) {
-			equality.SetTryEquality()
+			bse.SetTryEquality()
 			sateq.Enable()
+		},
+		func(bool) {})
+	(&option[bool]{}).init(
+		"cc",
+		false,
+		"Enables the equality unification using congruence closure",
+		func(bool) {
+			cc.SetTryEquality()
+			cc.Enable()
 		},
 		func(bool) {})
 	(&option[bool]{}).init(

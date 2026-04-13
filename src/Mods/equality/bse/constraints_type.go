@@ -34,7 +34,7 @@
 * This file contains the type definition of a constraint.
 **/
 
-package equality
+package bse
 
 import (
 	"fmt"

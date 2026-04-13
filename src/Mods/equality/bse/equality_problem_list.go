@@ -36,7 +36,7 @@
 * Equality problem multi list : a list of list of equality problem. Independent
 **/
 
-package equality
+package bse
 
 import (
 	"fmt"

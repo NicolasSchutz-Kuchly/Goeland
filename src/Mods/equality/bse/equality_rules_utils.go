@@ -34,7 +34,7 @@
 * This file contains some functions about unification and stop cases for equality reasoning.
 **/
 
-package equality
+package bse
 
 import (
 	"fmt"
