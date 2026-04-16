@@ -38,6 +38,7 @@ package cc
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/GoelandProver/Goeland/AST"
 	"github.com/GoelandProver/Goeland/Core"
@@ -101,7 +102,7 @@ func TryEquality(atomics_for_dmt Core.FormAndTermsList, st Search.State, new_ato
 			}
 		}
 	}
-	return true // TODO: return false
+	return false // TODO: return false
 }
 
 /**
@@ -112,6 +113,56 @@ func TryEquality(atomics_for_dmt Core.FormAndTermsList, st Search.State, new_ato
 **/
 func EqualityReasoning(eqStruct eqStruct.EqualityStruct, tree_pos, tree_neg Unif.DataStructure, atomic Lib.List[AST.Form], originalNodeId int) (bool, []Unif.Substitutions) {
 	debug(Lib.MkLazy(func() string { return "Welcome to the CC module!" }))
-	debug(Lib.MkLazy(func() string { return fmt.Sprintf("Atomics: %v", Lib.ListToString(atomic) ) }))
+	debug(Lib.MkLazy(func() string { return fmt.Sprintf("Atomics: %v", Lib.ListToString(atomic)) }))
+	debug(Lib.MkLazy(func() string {
+		var parts []string
+
+		for _, a := range atomic.GetSlice() {
+			sub := a.GetSubTerms()
+
+			parts = append(parts, fmt.Sprintf("%v", Lib.ListToString(sub)))
+		}
+
+		return fmt.Sprintf("Atomics (subterms): [%s]", strings.Join(parts, ", "))
+	}))
+
+	CCstruct := newCCEqualityStruct()
+
+	termes := []AST.Term{}
+
+	// AJOUT DE TOUT LES TERMES DANS DES EQCLASSES
+	for _, a := range atomic.GetSlice() {
+		sub := a.GetSubTerms().GetSlice()
+
+		for _, t := range sub {
+			termes = append(termes, t)
+
+			CCstruct.AddTerm(t)
+			//debug(Lib.MkLazy(func() string { return fmt.Sprintf("Atomics: %s", t.ToString()) }))
+		}
+	}
+	CCstruct.initArgsEq()
+	//debug(Lib.MkLazy(func() string { return CCstruct.ToString() }))
+	eq := retrieveEqualities(tree_pos.Copy())
+	for _, a := range eq {
+		CCstruct.merge(a.GetT1(), a.GetT2())
+		CCstruct.updateArgsEq()
+	}
+	loop := true
+	for loop {
+		loop = CCstruct.congruence()
+		CCstruct.updateArgsEq()
+	}
+
+	debug(Lib.MkLazy(func() string { return CCstruct.ToString() }))
+	/** Pour chaque term = ajouter term dans la liste
+		ajouter une eqclass pour le term
+		si j'ai un =  fuse les classes des 2 termes
+			 maj les autres eqclasses (propagation)
+				>> union (a=b et b=c >> c=a) == fait de base car dans une classe d'eq
+				>> congruence >> fonctions (a=b >> f(a) = f(b))
+		jusqua plus de termes/changements.
+
+	**/
 	return true, []Unif.Substitutions{}
 }
