@@ -105,6 +105,50 @@ func TryEquality(atomics_for_dmt Core.FormAndTermsList, st Search.State, new_ato
 	return false // TODO: return false
 }
 
+func EqStructCreate(tree_pos Unif.DataStructure, atomic Lib.List[AST.Form]) *CCEqualityStruct {
+
+	CCstruct := newCCEqualityStruct()
+
+	for _, a := range atomic.GetSlice() {
+		sub := a.GetSubTerms().GetSlice()
+
+		for _, t := range sub {
+
+			CCstruct.AddTerm(t)
+			//debug(Lib.MkLazy(func() string { return fmt.Sprintf("Atomics: %s", t.ToString()) }))
+		}
+	}
+	CCstruct.initArgsEq()
+	//debug(Lib.MkLazy(func() string { return CCstruct.ToString() }))
+	eq := retrieveEqualities(tree_pos.Copy())
+	for _, a := range eq {
+		CCstruct.union(CCstruct.retrieveEqTerm(a.GetT1()), CCstruct.retrieveEqTerm(a.GetT2()))
+	}
+	loop := true
+	for loop {
+		loop = CCstruct.congruence()
+	}
+
+	return CCstruct
+
+}
+
+// true = incoherence
+
+func testInequality(tree_neg Unif.DataStructure, CCstruct *CCEqualityStruct) bool {
+
+	ineq := retrieveInequalities(tree_neg.Copy())
+
+	testineq := false
+	for _, a := range ineq {
+		testineq = CCstruct.testSameclass(CCstruct.retrieveEqTerm(a.GetT1()), CCstruct.retrieveEqTerm(a.GetT2()))
+		if testineq {
+			break
+		}
+	}
+	return testineq
+}
+
 /**
 * Function EqualityReasoning
 * Takes atomics
@@ -126,43 +170,49 @@ func EqualityReasoning(eqStruct eqStruct.EqualityStruct, tree_pos, tree_neg Unif
 		return fmt.Sprintf("Atomics (subterms): [%s]", strings.Join(parts, ", "))
 	}))
 
-	CCstruct := newCCEqualityStruct()
-
-	termes := []AST.Term{}
-
-	// AJOUT DE TOUT LES TERMES DANS DES EQCLASSES
-	for _, a := range atomic.GetSlice() {
-		sub := a.GetSubTerms().GetSlice()
-
-		for _, t := range sub {
-			termes = append(termes, t)
-
-			CCstruct.AddTerm(t)
-			//debug(Lib.MkLazy(func() string { return fmt.Sprintf("Atomics: %s", t.ToString()) }))
-		}
-	}
-	CCstruct.initArgsEq()
-	//debug(Lib.MkLazy(func() string { return CCstruct.ToString() }))
-	eq := retrieveEqualities(tree_pos.Copy())
-	for _, a := range eq {
-		CCstruct.merge(a.GetT1(), a.GetT2())
-		CCstruct.updateArgsEq()
-	}
-	loop := true
-	for loop {
-		loop = CCstruct.congruence()
-		CCstruct.updateArgsEq()
-	}
+	CCstruct := EqStructCreate(tree_pos, atomic)
 
 	debug(Lib.MkLazy(func() string { return CCstruct.ToString() }))
-	/** Pour chaque term = ajouter term dans la liste
-		ajouter une eqclass pour le term
-		si j'ai un =  fuse les classes des 2 termes
-			 maj les autres eqclasses (propagation)
-				>> union (a=b et b=c >> c=a) == fait de base car dans une classe d'eq
-				>> congruence >> fonctions (a=b >> f(a) = f(b))
-		jusqua plus de termes/changements.
+	testineq := testInequality(tree_neg.Copy(), CCstruct)
+	debug(Lib.MkLazy(func() string { return fmt.Sprintf("Inegalitée : [%t]", testineq) }))
 
-	**/
+	atomicsn2 := Lib.List[AST.Form]{}
+	for _, a := range atomic.GetSlice() {
+		switch t := a.(type) {
+		case AST.Pred:
+
+			args := t.GetArgs()
+			for x, b := range t.GetArgs().GetSlice() {
+				args.Upd(x, CCstruct.find(CCstruct.retrieveEqTerm(b)).resp.term)
+			}
+			//debug(Lib.MkLazy(func() string { return fmt.Sprintf("test liste args : %s ", Lib.ListToString(args)) }))
+			replace := AST.MakePredSimple(t.GetIndex(), t.GetID(), t.GetTyArgs(), args, t.GetMetas())
+			atomicsn2.Append(replace)
+
+		case AST.Not:
+
+			switch v := t.GetForm().(type) {
+			case AST.Pred:
+				args := v.GetArgs()
+				for x, b := range v.GetArgs().GetSlice() {
+					args.Upd(x, CCstruct.find(CCstruct.retrieveEqTerm(b)).resp.term)
+				}
+				//debug(Lib.MkLazy(func() string { return fmt.Sprintf("test liste args : %s ", Lib.ListToString(args)) }))
+				formneq := AST.MakePredSimple(t.GetIndex(), v.GetID(), v.GetTyArgs(), args, t.GetMetas())
+				replace := AST.MakeNotSimple(t.GetIndex(), formneq, t.GetMetas())
+				atomicsn2.Append(replace)
+			}
+
+		default:
+
+		}
+
+		/**for _, b := range sub.GetSlice() {
+			b.(b, CCstruct.find(CCstruct.retrieveEqTerm(b)).resp.term)
+		}**/
+
+	}
+
+	debug(Lib.MkLazy(func() string { return fmt.Sprintf("Atomics: %v", Lib.ListToString(atomicsn2)) }))
 	return true, []Unif.Substitutions{}
 }
