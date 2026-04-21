@@ -37,6 +37,7 @@
 package AST
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/GoelandProver/Goeland/Glob"
@@ -114,7 +115,7 @@ type Fun struct {
 	p     Id
 	tys   Lib.List[Ty]
 	args  Lib.List[Term]
-	metas Lib.Cache[Lib.Set[Meta], Fun]
+	Metas Lib.Cache[Lib.Set[Meta], Fun]
 }
 
 func (f Fun) ToString() string {
@@ -155,11 +156,11 @@ func (f Fun) Equals(t any) bool {
 }
 
 func (f Fun) Copy() Term {
-	return MakeFun(f.GetP(), Lib.ListCpy(f.GetTyArgs()), Lib.ListCpy(f.GetArgs()), f.metas.Raw())
+	return MakeFun(f.GetP(), Lib.ListCpy(f.GetTyArgs()), Lib.ListCpy(f.GetArgs()), f.Metas.Raw())
 }
 
 func (f Fun) PointerCopy() *Fun {
-	nf := MakeFun(f.GetP(), f.GetTyArgs(), f.GetArgs(), f.metas.Raw())
+	nf := MakeFun(f.GetP(), f.GetTyArgs(), f.GetArgs(), f.Metas.Raw())
 	return &nf
 }
 
@@ -174,7 +175,7 @@ func (f Fun) forceGetMetas() Lib.Set[Meta] {
 }
 
 func (f Fun) GetMetas() Lib.Set[Meta] {
-	return f.metas.Get(f)
+	return f.Metas.Get(f)
 }
 
 func (f Fun) GetMetaList() Lib.List[Meta] {
@@ -197,9 +198,9 @@ func (f Fun) ReplaceSubTermBy(oldTerm, newTerm Term) Term {
 		return newTerm.Copy()
 	} else {
 		tl, res := replaceFirstOccurrenceTermList(f.GetArgs(), oldTerm, newTerm)
-		nf := MakeFun(f.GetID(), f.GetTyArgs(), tl, f.metas.Raw())
-		if !res && !f.metas.NeedsUpd() {
-			nf.metas.AvoidUpd()
+		nf := MakeFun(f.GetID(), f.GetTyArgs(), tl, f.Metas.Raw())
+		if !res && !f.Metas.NeedsUpd() {
+			nf.Metas.AvoidUpd()
 		}
 		return nf
 	}
@@ -218,7 +219,7 @@ func (f Fun) SubstTy(old TyGenVar, new Ty) Term {
 		f.GetID(),
 		typed_args,
 		args,
-		f.metas.Raw(),
+		f.Metas.Raw(),
 	)
 }
 
@@ -227,9 +228,9 @@ func (f Fun) ReplaceAllSubTerm(oldTerm, newTerm Term) Term {
 		return newTerm.Copy()
 	} else {
 		tl, res := ReplaceOccurrence(f.GetArgs(), oldTerm, newTerm)
-		nf := MakeFun(f.GetID(), f.GetTyArgs(), tl, f.metas.Raw())
-		if !res && !f.metas.NeedsUpd() {
-			nf.metas.AvoidUpd()
+		nf := MakeFun(f.GetID(), f.GetTyArgs(), tl, f.Metas.Raw())
+		if !res && !f.Metas.NeedsUpd() {
+			nf.Metas.AvoidUpd()
 		}
 		return nf
 	}
@@ -315,8 +316,10 @@ type Meta struct {
 	ty        Ty
 }
 
-func (m Meta) ToString() string { return printer.StrMeta(m.name, m.index) }
-func (m Meta) GetFormula() int  { return m.formula }
+func (m Meta) ToString() string {
+	return printer.StrMeta(m.name+fmt.Sprintf("%v", m.GetOccurence()), m.index)
+}
+func (m Meta) GetFormula() int { return m.formula }
 
 func (m Meta) GetName() string             { return m.name }
 func (m Meta) GetIndex() int               { return m.index }
@@ -330,7 +333,7 @@ func (m Meta) GetTy() Ty                   { return m.ty }
 
 func (m Meta) Equals(t any) bool {
 	if typed, ok := t.(Meta); ok {
-		return typed.GetIndex() == m.GetIndex()
+		return typed.GetName() == m.GetName() && typed.GetIndex() == m.GetIndex() && typed.GetOccurence() == m.GetOccurence()
 	}
 	return false
 }

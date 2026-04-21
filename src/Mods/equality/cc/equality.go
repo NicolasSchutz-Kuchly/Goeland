@@ -72,7 +72,8 @@ func TryEquality(atomics_for_dmt Core.FormAndTermsList, st Search.State, new_ato
 
 			debug(Lib.MkLazy(func() string { return "Equality reasoning is applicable !" }))
 			atomics_plus_dmt := append(st.GetAtomic(), atomics_for_dmt...)
-			res_eq, subst_eq := EqualityReasoning(st.GetEqStruct(), st.GetTreePos(), st.GetTreeNeg(), atomics_plus_dmt.ExtractForms(), original_node_id)
+			CCstruct := newCCEqualityStruct()
+			res_eq, subst_eq := EqualityReasoning(CCstruct, st.GetTreePos(), st.GetTreeNeg(), atomics_plus_dmt.ExtractForms(), original_node_id)
 
 			// Resulting substitutions are sent to the proof search
 			send_to_proof_search := Lib.NewList[Lib.List[Unif.MixedSubstitution]]()
@@ -105,9 +106,86 @@ func TryEquality(atomics_for_dmt Core.FormAndTermsList, st Search.State, new_ato
 	return false // TODO: return false
 }
 
-func EqStructCreate(tree_pos Unif.DataStructure, atomic Lib.List[AST.Form]) *CCEqualityStruct {
+// robinsonUnify implements Robinson's structural unification algorithm on
+// Goeland's term representation.  It extends the substitution s in place,
+// threading it through recursive calls, and returns Failure() on any clash.
+//
+// Steps:
+//  1. Walk both terms through s to their current representative.
+//  2. If they are already identical → nothing to do, return s.
+//  3. Meta on either side → occur-check, then bind and propagate via Eliminate.
+//  4. Fun / Fun with the same head and arity → recurse on each argument pair.
+//  5. Any other combination (different heads, different arities, Var, …) → Failure.
+func robinsonUnify(term1, term2 AST.Term, s Unif.Substitutions) Unif.Substitutions {
+	term1 = walkSubst(term1, s)
+	term2 = walkSubst(term2, s)
 
-	CCstruct := newCCEqualityStruct()
+	if term1.Equals(term2) {
+		return s
+	}
+
+	switch t1 := term1.(type) {
+	case AST.Meta:
+		if !OccurCheckValid(t1, term2) {
+			return Unif.Failure()
+		}
+		s.Set(t1, term2)
+		Unif.EliminateMeta(&s)
+		Unif.Eliminate(&s)
+		return s
+
+	case AST.Fun:
+		switch t2 := term2.(type) {
+		case AST.Meta:
+			if !OccurCheckValid(t2, term1) {
+				return Unif.Failure()
+			}
+			s.Set(t2, term1)
+			Unif.EliminateMeta(&s)
+			Unif.Eliminate(&s)
+			return s
+
+		case AST.Fun:
+			if !t1.GetID().Equals(t2.GetID()) {
+				return Unif.Failure()
+			}
+			args1 := t1.GetArgs().GetSlice()
+			args2 := t2.GetArgs().GetSlice()
+			if len(args1) != len(args2) {
+				return Unif.Failure()
+			}
+			for i := range args1 {
+				s = robinsonUnify(args1[i].Copy(), args2[i].Copy(), s)
+				if s.Equals(Failure()) {
+					return Unif.Failure()
+				}
+			}
+			return s
+
+		default:
+			return Unif.Failure()
+		}
+
+	default:
+		// Var or any other term kind: not expected after Skolemisation.
+		return Unif.Failure()
+	}
+}
+
+// walkSubst chases meta-variable bindings in s until reaching an unbound
+// meta or a non-meta term.
+func walkSubst(t AST.Term, s Unif.Substitutions) AST.Term {
+	for t.IsMeta() {
+		val, idx := s.Get(t.ToMeta())
+		if idx == -1 {
+			break
+		}
+		t = val
+	}
+	return t
+}
+
+func EqStructCreate(CCstruct *CCEqualityStruct, tree_pos Unif.DataStructure, atomic Lib.List[AST.Form]) *CCEqualityStruct {
 
 	for _, a := range atomic.GetSlice() {
 		sub := a.GetSubTerms().GetSlice()
@@ -118,12 +196,9 @@ func EqStructCreate(tree_pos Unif.DataStructure, atomic Lib.List[AST.Form]) *CCE
 			//debug(Lib.MkLazy(func() string { return fmt.Sprintf("Atomics: %s", t.ToString()) }))
 		}
 	}
-	CCstruct.initArgsEq()
 	//debug(Lib.MkLazy(func() string { return CCstruct.ToString() }))
-	eq := retrieveEqualities(tree_pos.Copy())
-	for _, a := range eq {
-		CCstruct.union(CCstruct.retrieveEqTerm(a.GetT1()), CCstruct.retrieveEqTerm(a.GetT2()))
-	}
+	CCstruct = addEqualityVar(CCstruct, atomic, tree_pos)
+
 	loop := true
 	for loop {
 		loop = CCstruct.congruence()
@@ -133,20 +208,175 @@ func EqStructCreate(tree_pos Unif.DataStructure, atomic Lib.List[AST.Form]) *CCE
 
 }
 
-// true = incoherence
-
 func testInequality(tree_neg Unif.DataStructure, CCstruct *CCEqualityStruct) bool {
 
 	ineq := retrieveInequalities(tree_neg.Copy())
 
 	testineq := false
 	for _, a := range ineq {
-		testineq = CCstruct.testSameclass(CCstruct.retrieveEqTerm(a.GetT1()), CCstruct.retrieveEqTerm(a.GetT2()))
+
+		testineq = CCstruct.testSameparent(CCstruct.retrieveEqTerm(a.GetT1()), CCstruct.retrieveEqTerm(a.GetT2()))
 		if testineq {
 			break
 		}
 	}
 	return testineq
+}
+
+func changeAtomic(atomic Lib.List[AST.Form]) Lib.List[AST.Form] {
+	atomicremake := atomic
+	atomicConst := Lib.List[AST.Term]{}
+	atomicMeta := Lib.List[AST.Term]{}
+	for _, a := range atomic.GetSlice() {
+		sub := a.GetSubTerms().GetSlice()
+
+		for _, t := range sub {
+			if t.GetMetaList().Empty() {
+				atomicConst.Append(t)
+			} else {
+				atomicMeta.Append(t)
+			}
+		}
+	}
+
+	for _, a := range atomic.GetSlice() {
+		switch t := a.(type) {
+		case AST.Pred:
+			if !t.GetMetaList().Empty() {
+
+				for _, b := range t.GetMetaList().GetSlice() {
+
+					for _, c := range atomicConst.GetSlice() {
+						replacement := t.Copy()
+						replacement = replacement.ReplaceMetaByTerm(b, c)
+						atomicremake.Append(replacement)
+					}
+
+				}
+
+			}
+
+		case AST.Not:
+
+			switch v := t.GetForm().(type) {
+			case AST.Pred:
+
+				if !v.GetMetaList().Empty() {
+
+					for _, b := range v.GetMetaList().GetSlice() {
+
+						for _, c := range atomicConst.GetSlice() {
+							replacement := v.Copy()
+							replacement = replacement.ReplaceMetaByTerm(b, c)
+							atomicremake.Append(replacement)
+						}
+
+					}
+
+				}
+
+			}
+
+		default:
+		}
+	}
+
+	return atomicremake
+
+}
+
+func addEqualityVar(CCstruct *CCEqualityStruct, atomic Lib.List[AST.Form], tree_pos Unif.DataStructure) *CCEqualityStruct {
+	eq := retrieveEqualities(tree_pos.Copy())
+	atomicConst := Lib.List[AST.Term]{}
+
+	for _, a := range atomic.GetSlice() {
+		sub := a.GetSubTerms().GetSlice()
+
+		for _, t := range sub {
+			if t.GetMetaList().Empty() {
+				atomicConst.Append(t)
+
+			}
+		}
+	}
+
+	for _, b := range eq {
+
+		e1 := b.GetT1()
+		e2 := b.GetT2()
+		CCstruct.union(CCstruct.retrieveEqTerm(b.GetT1()), CCstruct.retrieveEqTerm(b.GetT2()))
+		if !(e1.GetMetaList().Empty() && e2.GetMetaList().Empty()) {
+
+			if e1.GetMetaList().Len() < e2.GetMetaList().Len() {
+				e1, e2 = e2, e1
+			}
+			for _, t := range e1.GetMetaList().GetSlice() {
+
+				for _, m := range atomicConst.GetSlice() {
+					subste1 := e1.Copy()
+					subste2 := e2.Copy()
+					subste1 = subste1.ReplaceSubTermBy(t, m)
+					subste2 = subste2.ReplaceSubTermBy(t, m)
+					t1, _ := CCstruct.AddTerm(subste1)
+					t2, _ := CCstruct.AddTerm(subste2)
+					if t1 == nil {
+						t1 = CCstruct.retrieveEqTerm(subste1)
+					}
+					if t2 == nil {
+						t2 = CCstruct.retrieveEqTerm(subste2)
+					}
+					CCstruct.union(t1, t2)
+				}
+
+			}
+
+		}
+	}
+
+	return CCstruct
+}
+
+func newAtomics(CCstruct *CCEqualityStruct, atomic Lib.List[AST.Form]) (Lib.List[AST.Form], Lib.List[eqStruct.TermPair]) {
+
+	atomicsn2 := Lib.List[AST.Form]{}
+	pairneq := Lib.List[eqStruct.TermPair]{}
+
+	for _, a := range atomic.GetSlice() {
+		switch t := a.(type) {
+		case AST.Pred:
+
+			args := Lib.ListCpy(t.GetArgs())
+			for x, b := range t.GetArgs().GetSlice() {
+				args.Upd(x, find(CCstruct.retrieveEqTerm(b)).term)
+			}
+			//debug(Lib.MkLazy(func() string { return fmt.Sprintf("test liste args : %s ", Lib.ListToString(args)) }))
+			replace := AST.MakePredSimple(t.GetIndex(), t.GetID(), t.GetTyArgs(), args, t.GetMetas())
+			atomicsn2.Append(replace)
+
+		case AST.Not:
+
+			switch v := t.GetForm().(type) {
+			case AST.Pred:
+
+				args := Lib.ListCpy(v.GetArgs())
+				for x, b := range v.GetArgs().GetSlice() {
+					args.Upd(x, find(CCstruct.retrieveEqTerm(b)).term)
+				}
+				//debug(Lib.MkLazy(func() string { return fmt.Sprintf("test liste args : %s ", Lib.ListToString(args)) }))
+				formneq := AST.MakePredSimple(t.GetIndex(), v.GetID(), v.GetTyArgs(), args, t.GetMetas())
+				replace := AST.MakeNotSimple(t.GetIndex(), formneq, t.GetMetas())
+				atomicsn2.Append(replace)
+
+				if v.GetID().Equals(AST.Id_eq) {
+					pairneq.Append(eqStruct.MakeTermPair(v.GetArgs().GetSlice()[0], v.GetArgs().GetSlice()[1]))
+				}
+			}
+
+		default:
+
+		}
+	}
+	return atomicsn2, pairneq
 }
 
 /**
@@ -155,9 +385,10 @@ func testInequality(tree_neg Unif.DataStructure, CCstruct *CCEqualityStruct) boo
 * creates the problem
 * returns a bool for success and the corresponding substitution
 **/
-func EqualityReasoning(eqStruct eqStruct.EqualityStruct, tree_pos, tree_neg Unif.DataStructure, atomic Lib.List[AST.Form], originalNodeId int) (bool, []Unif.Substitutions) {
+func EqualityReasoning(CCstruct *CCEqualityStruct, tree_pos, tree_neg Unif.DataStructure, atomic Lib.List[AST.Form], originalNodeId int) (bool, []Unif.Substitutions) {
 	debug(Lib.MkLazy(func() string { return "Welcome to the CC module!" }))
 	debug(Lib.MkLazy(func() string { return fmt.Sprintf("Atomics: %v", Lib.ListToString(atomic)) }))
+
 	debug(Lib.MkLazy(func() string {
 		var parts []string
 
@@ -170,49 +401,30 @@ func EqualityReasoning(eqStruct eqStruct.EqualityStruct, tree_pos, tree_neg Unif
 		return fmt.Sprintf("Atomics (subterms): [%s]", strings.Join(parts, ", "))
 	}))
 
-	CCstruct := EqStructCreate(tree_pos, atomic)
-
-	debug(Lib.MkLazy(func() string { return CCstruct.ToString() }))
-	testineq := testInequality(tree_neg.Copy(), CCstruct)
-	debug(Lib.MkLazy(func() string { return fmt.Sprintf("Inegalitée : [%t]", testineq) }))
-
-	atomicsn2 := Lib.List[AST.Form]{}
-	for _, a := range atomic.GetSlice() {
-		switch t := a.(type) {
-		case AST.Pred:
-
-			args := t.GetArgs()
-			for x, b := range t.GetArgs().GetSlice() {
-				args.Upd(x, CCstruct.find(CCstruct.retrieveEqTerm(b)).resp.term)
-			}
-			//debug(Lib.MkLazy(func() string { return fmt.Sprintf("test liste args : %s ", Lib.ListToString(args)) }))
-			replace := AST.MakePredSimple(t.GetIndex(), t.GetID(), t.GetTyArgs(), args, t.GetMetas())
-			atomicsn2.Append(replace)
-
-		case AST.Not:
-
-			switch v := t.GetForm().(type) {
-			case AST.Pred:
-				args := v.GetArgs()
-				for x, b := range v.GetArgs().GetSlice() {
-					args.Upd(x, CCstruct.find(CCstruct.retrieveEqTerm(b)).resp.term)
-				}
-				//debug(Lib.MkLazy(func() string { return fmt.Sprintf("test liste args : %s ", Lib.ListToString(args)) }))
-				formneq := AST.MakePredSimple(t.GetIndex(), v.GetID(), v.GetTyArgs(), args, t.GetMetas())
-				replace := AST.MakeNotSimple(t.GetIndex(), formneq, t.GetMetas())
-				atomicsn2.Append(replace)
-			}
-
-		default:
-
-		}
-
-		/**for _, b := range sub.GetSlice() {
-			b.(b, CCstruct.find(CCstruct.retrieveEqTerm(b)).resp.term)
-		}**/
-
+	CCstruct = EqStructCreate(CCstruct, tree_pos, atomic)
+	for CCstruct.UpdateParent() {
 	}
 
-	debug(Lib.MkLazy(func() string { return fmt.Sprintf("Atomics: %v", Lib.ListToString(atomicsn2)) }))
-	return true, []Unif.Substitutions{}
+	debug(Lib.MkLazy(func() string { return CCstruct.ToString() }))
+	atomic2, ineq := newAtomics(CCstruct, Lib.ListCpy(atomic))
+	debug(Lib.MkLazy(func() string { return fmt.Sprintf("Atomics subs: %v", Lib.ListToString(atomic2)) }))
+
+	var robin []Unif.Substitutions
+
+	for _, a := range ineq.GetSlice() {
+		resulterobinson := robinsonUnify(a.GetT1(), a.GetT2(), Unif.MakeEmptySubstitution())
+		if !resulterobinson.Equals(Unif.Failure()) {
+			robin = append(robin, resulterobinson)
+		}
+	}
+
+	for _, i := range robin {
+		debug(Lib.MkLazy(func() string { return fmt.Sprintf("Robin : %s", i.ToString()) }))
+
+	}
+	if testInequality(tree_neg, CCstruct) {
+		return true, robin
+	}
+
+	return false, robin
 }
