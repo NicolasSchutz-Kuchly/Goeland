@@ -362,16 +362,18 @@ func allSubstitutions(atomic Lib.List[AST.Form]) []Unif.Substitutions {
 	}
 	//debug(Lib.MkLazy(func() string { return fmt.Sprintf("Atomics: %v", Lib.ListToString(atomicConst)) }))
 	//debug(Lib.MkLazy(func() string { return fmt.Sprintf("Atomics: %v", Lib.ListToString(atomicMeta)) }))
-	generate(atomicConst.GetSlice(), atomicMeta.Len(), func(comb []AST.Term) {
-		substitutions := Unif.Substitutions{}
-		for i, v := range atomicMeta.GetSlice() {
-			subst := Unif.MakeSubstitution(v, comb[i])
-			substitutions = append(substitutions, subst)
+	if atomicConst.Len() != 0 {
+		generate(atomicConst.GetSlice(), atomicMeta.Len(), func(comb []AST.Term) {
+			substitutions := Unif.Substitutions{}
+			for i, v := range atomicMeta.GetSlice() {
+				subst := Unif.MakeSubstitution(v, comb[i])
+				substitutions = append(substitutions, subst)
 
-		}
-		//debug(Lib.MkLazy(func() string { return fmt.Sprintf("Sub: %v", substitutions.ToString()) }))
-		substitutionslist = Unif.AddSubstToSubstitutionsList(substitutionslist, substitutions)
-	})
+			}
+			//debug(Lib.MkLazy(func() string { return fmt.Sprintf("Sub: %v", substitutions.ToString()) }))
+			substitutionslist = Unif.AddSubstToSubstitutionsList(substitutionslist, substitutions)
+		})
+	}
 
 	return substitutionslist
 }
@@ -500,7 +502,6 @@ func EqualityReasoning(CCstruct *CCEqualityStruct, tree_pos, tree_neg Unif.DataS
 		if val {
 			debug(Lib.MkLazy(func() string { return fmt.Sprintf("Atomic Val: %v", Lib.ListToString(atomicv5)) }))
 			substValid = append(substValid, a)
-			break
 		}
 	}
 
