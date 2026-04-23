@@ -4,5 +4,5 @@
 fof(eq, axiom, a = f(a,b)).
 
 
-fof(test, conjecture, 
+fof(test, conjecture,
     f(f(a,b),b)=a).

@@ -38,7 +38,6 @@ package cc
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/GoelandProver/Goeland/AST"
 	"github.com/GoelandProver/Goeland/Core"
@@ -67,7 +66,7 @@ func SetTryEquality() {
 // Determine whether equality reasoning is applicable
 func TryEquality(atomics_for_dmt Core.FormAndTermsList, st Search.State, new_atomics Core.FormAndTermsList, father_id uint64, cha Search.Communication, node_id int, original_node_id int) bool {
 	if !Glob.GetDMTBeforeEq() || len(atomics_for_dmt) == 0 || len(st.GetLF()) == 0 {
-		debug(Lib.MkLazy(func() string { return "Try apply quality reasoning !" }))
+		debug(Lib.MkLazy(func() string { return "Try apply equality reasoning !" }))
 		if len(new_atomics) > 0 || len(st.GetLF()) == 0 {
 
 			debug(Lib.MkLazy(func() string { return "Equality reasoning is applicable !" }))
@@ -199,21 +198,17 @@ func EqStructCreate(CCstruct *CCEqualityStruct, tree_pos Unif.DataStructure, ato
 	//debug(Lib.MkLazy(func() string { return CCstruct.ToString() }))
 	CCstruct = addEqualityVar(CCstruct, atomic, tree_pos)
 
-	loop := true
-	for loop {
-		loop = CCstruct.congruence()
+	for CCstruct.congruence() {
 	}
 
 	return CCstruct
 
 }
 
-func testInequality(tree_neg Unif.DataStructure, CCstruct *CCEqualityStruct) bool {
-
-	ineq := retrieveInequalities(tree_neg.Copy())
+func testInequality(ineq Lib.List[eqStruct.TermPair], CCstruct *CCEqualityStruct) bool {
 
 	testineq := false
-	for _, a := range ineq {
+	for _, a := range ineq.GetSlice() {
 
 		testineq = CCstruct.testSameparent(CCstruct.retrieveEqTerm(a.GetT1()), CCstruct.retrieveEqTerm(a.GetT2()))
 		if testineq {
@@ -310,30 +305,103 @@ func addEqualityVar(CCstruct *CCEqualityStruct, atomic Lib.List[AST.Form], tree_
 			if e1.GetMetaList().Len() < e2.GetMetaList().Len() {
 				e1, e2 = e2, e1
 			}
-			for _, t := range e1.GetMetaList().GetSlice() {
 
-				for _, m := range atomicConst.GetSlice() {
-					subste1 := e1.Copy()
-					subste2 := e2.Copy()
-					subste1 = subste1.ReplaceSubTermBy(t, m)
-					subste2 = subste2.ReplaceSubTermBy(t, m)
-					t1, _ := CCstruct.AddTerm(subste1)
-					t2, _ := CCstruct.AddTerm(subste2)
-					if t1 == nil {
-						t1 = CCstruct.retrieveEqTerm(subste1)
-					}
-					if t2 == nil {
-						t2 = CCstruct.retrieveEqTerm(subste2)
-					}
-					CCstruct.union(t1, t2)
+			generate(atomicConst.GetSlice(), e1.GetMetaList().Len(), func(comb []AST.Term) {
+
+				subste1 := e1.Copy()
+				subste2 := e2.Copy()
+
+				for i, v := range e1.GetMetaList().GetSlice() {
+					subste1 = subste1.ReplaceSubTermBy(v, comb[i])
+					subste2 = subste2.ReplaceSubTermBy(v, comb[i])
 				}
-
-			}
+				t1, _ := CCstruct.AddTerm(subste1)
+				t2, _ := CCstruct.AddTerm(subste2)
+				if t1 == nil {
+					t1 = CCstruct.retrieveEqTerm(subste1)
+				}
+				if t2 == nil {
+					t2 = CCstruct.retrieveEqTerm(subste2)
+				}
+				CCstruct.union(t1, t2)
+			})
 
 		}
+
 	}
 
 	return CCstruct
+}
+
+func allSubstitutions(atomic Lib.List[AST.Form]) []Unif.Substitutions {
+	substitutionslist := []Unif.Substitutions{}
+
+	atomicConst := Lib.List[AST.Term]{}
+	atomicMeta := Lib.List[AST.Meta]{}
+
+	cmpFunc := func(x, y AST.Term) bool {
+		return x.Equals(y)
+	}
+	cmpMeta := func(x, y AST.Meta) bool {
+		return x.Equals(y)
+	}
+	for _, a := range atomic.GetSlice() {
+		sub := a.GetSubTerms().GetSlice()
+
+		for _, t := range sub {
+			if t.GetMetaList().Empty() {
+				atomicConst.Add(cmpFunc, t)
+
+			} else {
+				for _, v := range t.GetMetaList().GetSlice() {
+					atomicMeta.Add(cmpMeta, v)
+
+				}
+			}
+		}
+	}
+	//debug(Lib.MkLazy(func() string { return fmt.Sprintf("Atomics: %v", Lib.ListToString(atomicConst)) }))
+	//debug(Lib.MkLazy(func() string { return fmt.Sprintf("Atomics: %v", Lib.ListToString(atomicMeta)) }))
+	generate(atomicConst.GetSlice(), atomicMeta.Len(), func(comb []AST.Term) {
+		substitutions := Unif.Substitutions{}
+		for i, v := range atomicMeta.GetSlice() {
+			subst := Unif.MakeSubstitution(v, comb[i])
+			substitutions = append(substitutions, subst)
+
+		}
+		//debug(Lib.MkLazy(func() string { return fmt.Sprintf("Sub: %v", substitutions.ToString()) }))
+		substitutionslist = Unif.AddSubstToSubstitutionsList(substitutionslist, substitutions)
+	})
+
+	return substitutionslist
+}
+
+func generate(constants []AST.Term, n int, f func([]AST.Term)) {
+
+	k := len(constants)
+	indices := make([]int, n)
+
+	for {
+		comb := make([]AST.Term, n)
+
+		for i, v := range indices {
+			comb[i] = constants[v]
+
+		}
+		f(comb)
+		pos := n - 1
+		for pos >= 0 {
+			indices[pos]++
+			if indices[pos] < k {
+				break
+			}
+			indices[pos] = 0
+			pos--
+		}
+		if pos < 0 {
+			break
+		}
+	}
 }
 
 func newAtomics(CCstruct *CCEqualityStruct, atomic Lib.List[AST.Form]) (Lib.List[AST.Form], Lib.List[eqStruct.TermPair]) {
@@ -379,6 +447,37 @@ func newAtomics(CCstruct *CCEqualityStruct, atomic Lib.List[AST.Form]) (Lib.List
 	return atomicsn2, pairneq
 }
 
+func trySubtitution(CCstruct *CCEqualityStruct, atomic Lib.List[AST.Form], substitutions Unif.Substitutions) (Lib.List[AST.Form], bool) {
+	atomicv8 := Core.ApplySubstitutionsOnFormulaList(Unif.FromSubstitutions(substitutions), Lib.ListCpy(atomic))
+	tpa := Unif.NewNode()
+	tree_pos := tpa.MakeDataStruct(atomicv8, true)
+
+	CCstruct = EqStructCreate(CCstruct, tree_pos, atomicv8)
+	for CCstruct.UpdateParent() {
+	}
+
+	atomicv2, ineq := newAtomics(CCstruct, atomicv8)
+
+	//debug(Lib.MkLazy(func() string { return fmt.Sprintf("New atomics : : %v", Lib.ListToString(atomic2)) }))
+
+	if testInequality(ineq, CCstruct) {
+		return atomicv2, true
+	}
+
+	tna := Unif.NewNode()
+	tn := tna.MakeDataStruct(atomicv2, false)
+
+	for _, i := range atomicv2.GetSlice() {
+		b, _ := tn.Unify(i)
+		if b {
+
+			return atomicv2, true
+
+		}
+	}
+	return atomicv2, false
+}
+
 /**
 * Function EqualityReasoning
 * Takes atomics
@@ -386,45 +485,36 @@ func newAtomics(CCstruct *CCEqualityStruct, atomic Lib.List[AST.Form]) (Lib.List
 * returns a bool for success and the corresponding substitution
 **/
 func EqualityReasoning(CCstruct *CCEqualityStruct, tree_pos, tree_neg Unif.DataStructure, atomic Lib.List[AST.Form], originalNodeId int) (bool, []Unif.Substitutions) {
-	debug(Lib.MkLazy(func() string { return "Welcome to the CC module!" }))
+	debug(Lib.MkLazy(func() string { return "Welcome to the CC module ! ! ! " }))
 	debug(Lib.MkLazy(func() string { return fmt.Sprintf("Atomics: %v", Lib.ListToString(atomic)) }))
 
-	debug(Lib.MkLazy(func() string {
-		var parts []string
+	substValid := []Unif.Substitutions{}
+	subsposible := allSubstitutions(atomic)
 
-		for _, a := range atomic.GetSlice() {
-			sub := a.GetSubTerms()
+	//	debug(Lib.MkLazy(func() string { return CCstruct.ToString() }))
+	for _, a := range subsposible {
 
-			parts = append(parts, fmt.Sprintf("%v", Lib.ListToString(sub)))
-		}
+		CCstruct.Reset()
+		atomicv5, val := trySubtitution(CCstruct, atomic, a)
 
-		return fmt.Sprintf("Atomics (subterms): [%s]", strings.Join(parts, ", "))
-	}))
-
-	CCstruct = EqStructCreate(CCstruct, tree_pos, atomic)
-	for CCstruct.UpdateParent() {
-	}
-
-	debug(Lib.MkLazy(func() string { return CCstruct.ToString() }))
-	atomic2, ineq := newAtomics(CCstruct, Lib.ListCpy(atomic))
-	debug(Lib.MkLazy(func() string { return fmt.Sprintf("Atomics subs: %v", Lib.ListToString(atomic2)) }))
-
-	var robin []Unif.Substitutions
-
-	for _, a := range ineq.GetSlice() {
-		resulterobinson := robinsonUnify(a.GetT1(), a.GetT2(), Unif.MakeEmptySubstitution())
-		if !resulterobinson.Equals(Unif.Failure()) {
-			robin = append(robin, resulterobinson)
+		if val {
+			debug(Lib.MkLazy(func() string { return fmt.Sprintf("Atomic Val: %v", Lib.ListToString(atomicv5)) }))
+			substValid = append(substValid, a)
+			break
 		}
 	}
 
-	for _, i := range robin {
-		debug(Lib.MkLazy(func() string { return fmt.Sprintf("Robin : %s", i.ToString()) }))
-
-	}
-	if testInequality(tree_neg, CCstruct) {
-		return true, robin
+	debug(Lib.MkLazy(func() string { return fmt.Sprintf("Substi: %v", len(substValid)) }))
+	for _, a := range substValid {
+		debug(Lib.MkLazy(func() string { return fmt.Sprintf("Substi: %v", a.ToString()) }))
 	}
 
-	return false, robin
+	//debug(Lib.MkLazy(func() string { return fmt.Sprintf("New atomics : : %v", art[3].ToString()) }))
+
+	if len(substValid) < 1 {
+		return false, []Unif.Substitutions{}
+	} else {
+		return true, substValid
+	}
+
 }

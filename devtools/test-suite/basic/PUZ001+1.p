@@ -96,6 +96,6 @@ fof(pel55_11,axiom,
     agatha != butler ).
 
 fof(pel55,conjecture,
-    killed(agatha,charles) ).
+    killed(agatha,agatha) ).
 
 %------------------------------------------------------------------------------

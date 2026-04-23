@@ -2,14 +2,14 @@
 % result: VALID
 
 fof(eq, axiom, 
-    (! [X,Y] :
-    p(X,Y) = X)).
+    (! [X] :
+    X = a)).
 
 
 fof(eq, axiom,
-    a = b).
+    p(a) ).
 
 fof(test_quant_1, conjecture, 
-    p(a,a) = p(b,c)).
+    p(b)).
 
 

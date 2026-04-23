@@ -52,6 +52,10 @@ func newCCEqualityStruct() *CCEqualityStruct {
 	return &CCEqualityStruct{}
 }
 
+func (cc *CCEqualityStruct) Reset() {
+	cc.classes = nil
+}
+
 func (cc *CCEqualityStruct) AddTerm(t AST.Term) (*Eqterm, int) {
 	if contain := cc.retrieveEqTerm(t); contain != nil {
 		return contain, contain.len
@@ -79,15 +83,14 @@ func (cc *CCEqualityStruct) AddTerm(t AST.Term) (*Eqterm, int) {
 func (cc *CCEqualityStruct) ToString() string {
 	var b strings.Builder
 
-	b.WriteString("CCEqualityStruct {\n")
+	b.WriteString("\nEquality Struct :\n")
 
 	for _, c := range cc.classes {
 
-		b.WriteString(fmt.Sprintf("Term : %s", c.ToString()))
+		b.WriteString(fmt.Sprintf("	%s", c.ToString()))
 
 		b.WriteString("\n")
 	}
-	b.WriteString("}\n")
 
 	return b.String()
 }
@@ -115,9 +118,11 @@ func (cc *CCEqualityStruct) createParent(e *Eqterm) bool {
 			newparent := AST.MakeFun(fun.GetP(), Lib.ListCpy(fun.GetTyArgs()), args, fun.GetMetas())
 			l, _ := cc.AddTerm(newparent)
 			find(e).setParent(l)
+
 		default:
 		}
 	}
+
 	return testchange != len(cc.classes)
 }
 
@@ -140,7 +145,7 @@ func (cc *CCEqualityStruct) GetParentList() []*Eqterm {
 }
 
 func find(e *Eqterm) *Eqterm {
-	if e.term.Equals(e.parent.term) {
+	if e.Equals(e.parent) {
 		return e
 	} else {
 		return find(e.parent)
@@ -151,19 +156,22 @@ func (cc *CCEqualityStruct) union(term *Eqterm, term2 *Eqterm) {
 
 	x := term
 	y := term2
-	if !cc.testSameparent(term, term2) {
 
-		if find(x).len > find(y).len {
+	if !cc.testSameparent(term, term2) {
+		if find(x).len > find(y).len || (!find(x).term.GetMetaList().Empty() && find(y).term.GetMetaList().Empty()) {
 			x, y = y, x
 		}
 
+		if (find(x).len > find(y).len) && (!find(x).term.GetMetaList().Empty() && !find(y).term.GetMetaList().Empty()) {
+			x, y = y, x
+		}
 		find(y).setParent(find(x))
 
 	}
 }
 
 func (cc *CCEqualityStruct) testSameparent(term1 *Eqterm, term2 *Eqterm) bool {
-	return find(term1).term.Equals(find(term2).term)
+	return find(term1).Equals(find(term2))
 }
 
 func (cc *CCEqualityStruct) congruence() bool {
@@ -171,7 +179,7 @@ func (cc *CCEqualityStruct) congruence() bool {
 	for _, e := range cc.classes {
 		if !(len(e.use) == 0) {
 			for _, e2 := range cc.classes {
-				if e2.term.GetIndex() == e.term.GetIndex() && find(e) != find(e2) {
+				if e2.term.GetIndex() == e.term.GetIndex() && !find(e).Equals(find(e2)) {
 					if equalMaps(e2.use, e.use) {
 						cc.union(e, e2)
 						res = true
@@ -196,7 +204,7 @@ func (t *Eqterm) setParent(p *Eqterm) {
 }
 
 func (t *Eqterm) isParent() bool {
-	return t.term.Equals(find(t).term)
+	return t.Equals(find(t))
 }
 
 func (t *Eqterm) setLen(p int) {
@@ -204,25 +212,7 @@ func (t *Eqterm) setLen(p int) {
 }
 
 func (t *Eqterm) ToString() string {
-	str := fmt.Sprintf("%v (class: %s)", t.term.ToString(), find(t).term.ToString())
-	first := true
-
-	str += fmt.Sprintf(" (len : %d) ", t.len)
-	for i := 0; i < len(t.use); i++ {
-
-		if val, ok := t.use[i]; ok {
-			if !first {
-				str += ", "
-
-			} else {
-				str += "( arg :"
-			}
-			str += fmt.Sprintf("%s", val.term.ToString())
-			first = false
-		}
-	}
-
-	str += ")"
+	str := fmt.Sprintf("	%v (Parent: %s)", t.term.ToString(), find(t).term.ToString())
 	return str
 }
 
@@ -234,9 +224,13 @@ func NewEqTerm(term *AST.Term) *Eqterm {
 
 func equalMaps(a, b map[int]*Eqterm) bool {
 	for k := range a {
-		if !(find(a[k]).term.Equals(find(b[k]).term)) {
+		if !(find(a[k]).Equals(find(b[k]))) {
 			return false
 		}
 	}
 	return true
+}
+
+func (t *Eqterm) Equals(t1 *Eqterm) bool {
+	return t.term.Equals(t1.term)
 }

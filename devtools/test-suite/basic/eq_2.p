@@ -16,4 +16,4 @@ fof(eq, axiom,
 
 fof(eq, axiom,
     ! [Y] :
-    g(f(Y)) = f(Y)).
+    g(f(Y)) = Y).
