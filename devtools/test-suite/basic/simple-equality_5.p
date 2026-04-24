@@ -5,9 +5,13 @@ fof(eq, axiom, a = b).
 
 fof(eq, axiom, c = d).
 
-fof(eq, axiom, p(a, c)).
+fof(eq, axiom, e = f).
+
+fof(eq, axiom, p(a, c, d)).
+
+fof(eq, axiom, p(d, b , f)).
 
 fof(test, conjecture, 
-    p(b, d)).
+    p(b, d , c)).
 
 

@@ -60,6 +60,7 @@ func (cc *CCEqualityStruct) AddTerm(t AST.Term) (*Eqterm, int) {
 	if contain := cc.retrieveEqTerm(t); contain != nil {
 		return contain, contain.len
 	}
+
 	e := NewEqTerm(&t)
 	e.setParent(e)
 	lenmax := 1
@@ -67,9 +68,9 @@ func (cc *CCEqualityStruct) AddTerm(t AST.Term) (*Eqterm, int) {
 
 	if f, ok := t.(AST.Fun); ok {
 		for indice, arg := range f.GetArgs().GetSlice() {
-			h, k := cc.AddTerm(arg)
-			lenmaj = max(1+k, lenmaj)
-			e.use[indice] = h
+			term, leng := cc.AddTerm(arg)
+			lenmaj = max(1+leng, lenmaj)
+			e.use[indice] = term
 		}
 		lenmax = max(lenmax, lenmaj)
 	}
@@ -106,19 +107,22 @@ func (cc *CCEqualityStruct) retrieveEqTerm(term AST.Term) *Eqterm {
 
 func (cc *CCEqualityStruct) createParent(e *Eqterm) bool {
 	testchange := len(cc.classes)
-	if e.isParent() {
+	if e.isParent() && !(len(e.use) == 0) {
 		switch fun := e.term.(type) {
 		case AST.Fun:
-
 			args := Lib.List[AST.Term]{}
-
-			for _, v := range fun.GetArgs().GetSlice() {
-				args.Append(find(cc.retrieveEqTerm(v)).term)
+			testExist := true
+			for i := range e.use {
+				if !find(e.use[i]).Equals(e.use[i]) {
+					testExist = false
+				}
+				args.Append(find(e.use[i]).term)
 			}
-			newparent := AST.MakeFun(fun.GetP(), Lib.ListCpy(fun.GetTyArgs()), args, fun.GetMetas())
-			l, _ := cc.AddTerm(newparent)
-			find(e).setParent(l)
-
+			if testExist {
+				newparent := AST.MakeFun(fun.GetP(), Lib.ListCpy(fun.GetTyArgs()), args, fun.GetMetas())
+				l, _ := cc.AddTerm(newparent)
+				find(e).setParent(l)
+			}
 		default:
 		}
 	}
@@ -129,7 +133,9 @@ func (cc *CCEqualityStruct) createParent(e *Eqterm) bool {
 func (cc *CCEqualityStruct) UpdateParent() bool {
 	loop := false
 	for _, e := range cc.classes {
-		loop = cc.createParent(e) || loop
+		if e.isParent() && !(len(e.use) == 0) {
+			loop = cc.createParent(e) || loop
+		}
 	}
 	return loop
 }
@@ -147,9 +153,9 @@ func (cc *CCEqualityStruct) GetParentList() []*Eqterm {
 func find(e *Eqterm) *Eqterm {
 	if e.Equals(e.parent) {
 		return e
-	} else {
-		return find(e.parent)
 	}
+	return find(e.parent)
+
 }
 
 func (cc *CCEqualityStruct) union(term *Eqterm, term2 *Eqterm) {

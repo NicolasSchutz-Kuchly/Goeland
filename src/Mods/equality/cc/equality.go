@@ -205,81 +205,11 @@ func EqStructCreate(CCstruct *CCEqualityStruct, tree_pos Unif.DataStructure, ato
 
 }
 
-func testInequality(ineq Lib.List[eqStruct.TermPair], CCstruct *CCEqualityStruct) bool {
-
-	testineq := false
-	for _, a := range ineq.GetSlice() {
-
-		testineq = CCstruct.testSameparent(CCstruct.retrieveEqTerm(a.GetT1()), CCstruct.retrieveEqTerm(a.GetT2()))
-		if testineq {
-			break
-		}
-	}
-	return testineq
-}
-
-func changeAtomic(atomic Lib.List[AST.Form]) Lib.List[AST.Form] {
-	atomicremake := atomic
-	atomicConst := Lib.List[AST.Term]{}
-	atomicMeta := Lib.List[AST.Term]{}
-	for _, a := range atomic.GetSlice() {
-		sub := a.GetSubTerms().GetSlice()
-
-		for _, t := range sub {
-			if t.GetMetaList().Empty() {
-				atomicConst.Append(t)
-			} else {
-				atomicMeta.Append(t)
-			}
-		}
-	}
-
-	for _, a := range atomic.GetSlice() {
-		switch t := a.(type) {
-		case AST.Pred:
-			if !t.GetMetaList().Empty() {
-
-				for _, b := range t.GetMetaList().GetSlice() {
-
-					for _, c := range atomicConst.GetSlice() {
-						replacement := t.Copy()
-						replacement = replacement.ReplaceMetaByTerm(b, c)
-						atomicremake.Append(replacement)
-					}
-
-				}
-
-			}
-
-		case AST.Not:
-
-			switch v := t.GetForm().(type) {
-			case AST.Pred:
-
-				if !v.GetMetaList().Empty() {
-
-					for _, b := range v.GetMetaList().GetSlice() {
-
-						for _, c := range atomicConst.GetSlice() {
-							replacement := v.Copy()
-							replacement = replacement.ReplaceMetaByTerm(b, c)
-							atomicremake.Append(replacement)
-						}
-
-					}
-
-				}
-
-			}
-
-		default:
-		}
-	}
-
-	return atomicremake
-
-}
-
+/*
+*
+prend la liste des égalitées et si elle contient des variables etend remplace les variables par tout les termes possibles
+*
+*/
 func addEqualityVar(CCstruct *CCEqualityStruct, atomic Lib.List[AST.Form], tree_pos Unif.DataStructure) *CCEqualityStruct {
 	eq := retrieveEqualities(tree_pos.Copy())
 	atomicConst := Lib.List[AST.Term]{}
@@ -333,9 +263,7 @@ func addEqualityVar(CCstruct *CCEqualityStruct, atomic Lib.List[AST.Form], tree_
 	return CCstruct
 }
 
-func allSubstitutions(atomic Lib.List[AST.Form]) []Unif.Substitutions {
-	substitutionslist := []Unif.Substitutions{}
-
+func createConstAndMetaList(atomic Lib.List[AST.Form]) (Lib.List[AST.Term], Lib.List[AST.Meta]) {
 	atomicConst := Lib.List[AST.Term]{}
 	atomicMeta := Lib.List[AST.Meta]{}
 
@@ -345,23 +273,26 @@ func allSubstitutions(atomic Lib.List[AST.Form]) []Unif.Substitutions {
 	cmpMeta := func(x, y AST.Meta) bool {
 		return x.Equals(y)
 	}
-	for _, a := range atomic.GetSlice() {
-		sub := a.GetSubTerms().GetSlice()
+	for _, form := range atomic.GetSlice() {
 
-		for _, t := range sub {
-			if t.GetMetaList().Empty() {
-				atomicConst.Add(cmpFunc, t)
+		for _, term := range form.GetSubTerms().GetSlice() {
+			if term.GetMetaList().Empty() {
+				atomicConst.Add(cmpFunc, term)
 
 			} else {
-				for _, v := range t.GetMetaList().GetSlice() {
-					atomicMeta.Add(cmpMeta, v)
+				for _, meta := range term.GetMetaList().GetSlice() {
+					atomicMeta.Add(cmpMeta, meta)
 
 				}
 			}
 		}
 	}
-	//debug(Lib.MkLazy(func() string { return fmt.Sprintf("Atomics: %v", Lib.ListToString(atomicConst)) }))
-	//debug(Lib.MkLazy(func() string { return fmt.Sprintf("Atomics: %v", Lib.ListToString(atomicMeta)) }))
+	return atomicConst, atomicMeta
+}
+
+func allSubstitutions(atomicConst Lib.List[AST.Term], atomicMeta Lib.List[AST.Meta]) []Unif.Substitutions {
+	substitutionslist := []Unif.Substitutions{}
+
 	if atomicConst.Len() != 0 {
 		generate(atomicConst.GetSlice(), atomicMeta.Len(), func(comb []AST.Term) {
 			substitutions := Unif.Substitutions{}
@@ -382,9 +313,8 @@ func generate(constants []AST.Term, n int, f func([]AST.Term)) {
 
 	k := len(constants)
 	indices := make([]int, n)
-
+	comb := make([]AST.Term, n)
 	for {
-		comb := make([]AST.Term, n)
 
 		for i, v := range indices {
 			comb[i] = constants[v]
@@ -404,6 +334,111 @@ func generate(constants []AST.Term, n int, f func([]AST.Term)) {
 			break
 		}
 	}
+}
+
+func trySubtitution(CCstruct *CCEqualityStruct, atomic Lib.List[AST.Form], substitutions Unif.Substitutions) bool {
+	atomicSubstitute := Core.ApplySubstitutionsOnFormulaList(Unif.FromSubstitutions(substitutions), Lib.ListCpy(atomic))
+
+	treePos := Unif.NewNode().MakeDataStruct(atomicSubstitute, true)
+
+	CCstruct = EqStructCreateSimple(CCstruct, treePos, atomicSubstitute)
+
+	return testresult(CCstruct, atomicSubstitute)
+
+}
+
+func tryEverySubstitutions(CCstruct *CCEqualityStruct, atomic Lib.List[AST.Form], constList Lib.List[AST.Term], metaList Lib.List[AST.Meta]) (bool, []Unif.Substitutions) {
+	allSubstitutionsList := allSubstitutions(constList, metaList)
+	validSubstitutions := []Unif.Substitutions{}
+
+	for _, a := range allSubstitutionsList {
+
+		CCstruct.Reset()
+
+		if trySubtitution(CCstruct, atomic, a) {
+			debug(Lib.MkLazy(func() string { return fmt.Sprintf("GOOD Subs: %v", a.ToString()) }))
+			validSubstitutions = append(validSubstitutions, a)
+		}
+	}
+	if len(validSubstitutions) == 0 {
+		return false, []Unif.Substitutions{}
+	}
+
+	return true, validSubstitutions
+
+}
+
+func ccOnlyConst(CCstruct *CCEqualityStruct, tree_pos Unif.DataStructure, atomic Lib.List[AST.Form]) bool {
+
+	CCstruct = EqStructCreateSimple(CCstruct, tree_pos, atomic)
+	return testresult(CCstruct, atomic)
+
+}
+
+func testresult(CCstruct *CCEqualityStruct, atomic Lib.List[AST.Form]) bool {
+	atomicv2, ineq := newAtomics(CCstruct, atomic)
+
+	debug(Lib.MkLazy(func() string { return fmt.Sprintf("New atomics : : %v", Lib.ListToString(atomicv2)) }))
+
+	if testInequality(ineq, CCstruct) {
+		return true
+	}
+
+	newtreeneg := Unif.NewNode().MakeDataStruct(atomicv2, false)
+
+	for _, i := range atomicv2.GetSlice() {
+		b, _ := newtreeneg.Unify(i)
+		if b {
+			return true
+
+		}
+	}
+	return false
+
+}
+
+func testInequality(ineq Lib.List[eqStruct.TermPair], CCstruct *CCEqualityStruct) bool {
+
+	testineq := false
+	for _, a := range ineq.GetSlice() {
+
+		testineq = CCstruct.testSameparent(CCstruct.retrieveEqTerm(a.GetT1()), CCstruct.retrieveEqTerm(a.GetT2()))
+		if testineq {
+			break
+		}
+	}
+	return testineq
+}
+
+func EqStructCreateSimple(CCstruct *CCEqualityStruct, tree_pos Unif.DataStructure, atomic Lib.List[AST.Form]) *CCEqualityStruct {
+
+	for _, a := range atomic.GetSlice() {
+		sub := a.GetSubTerms().GetSlice()
+		for _, t := range sub {
+			CCstruct.AddTerm(t)
+			//debug(Lib.MkLazy(func() string { return fmt.Sprintf("Atomics: %s", t.ToString()) }))
+		}
+	}
+	//debug(Lib.MkLazy(func() string { return CCstruct.ToString() }))
+	CCstruct = addEqualityConst(CCstruct, tree_pos)
+
+	for CCstruct.congruence() {
+	}
+	for CCstruct.UpdateParent() {
+	}
+
+	return CCstruct
+
+}
+
+func addEqualityConst(CCstruct *CCEqualityStruct, tree_pos Unif.DataStructure) *CCEqualityStruct {
+	eq := retrieveEqualities(tree_pos.Copy())
+
+	for _, b := range eq {
+		CCstruct.union(CCstruct.retrieveEqTerm(b.GetT1()), CCstruct.retrieveEqTerm(b.GetT2()))
+	}
+
+	return CCstruct
 }
 
 func newAtomics(CCstruct *CCEqualityStruct, atomic Lib.List[AST.Form]) (Lib.List[AST.Form], Lib.List[eqStruct.TermPair]) {
@@ -449,37 +484,6 @@ func newAtomics(CCstruct *CCEqualityStruct, atomic Lib.List[AST.Form]) (Lib.List
 	return atomicsn2, pairneq
 }
 
-func trySubtitution(CCstruct *CCEqualityStruct, atomic Lib.List[AST.Form], substitutions Unif.Substitutions) (Lib.List[AST.Form], bool) {
-	atomicv8 := Core.ApplySubstitutionsOnFormulaList(Unif.FromSubstitutions(substitutions), Lib.ListCpy(atomic))
-	tpa := Unif.NewNode()
-	tree_pos := tpa.MakeDataStruct(atomicv8, true)
-
-	CCstruct = EqStructCreate(CCstruct, tree_pos, atomicv8)
-	for CCstruct.UpdateParent() {
-	}
-
-	atomicv2, ineq := newAtomics(CCstruct, atomicv8)
-
-	//debug(Lib.MkLazy(func() string { return fmt.Sprintf("New atomics : : %v", Lib.ListToString(atomic2)) }))
-
-	if testInequality(ineq, CCstruct) {
-		return atomicv2, true
-	}
-
-	tna := Unif.NewNode()
-	tn := tna.MakeDataStruct(atomicv2, false)
-
-	for _, i := range atomicv2.GetSlice() {
-		b, _ := tn.Unify(i)
-		if b {
-
-			return atomicv2, true
-
-		}
-	}
-	return atomicv2, false
-}
-
 /**
 * Function EqualityReasoning
 * Takes atomics
@@ -490,32 +494,12 @@ func EqualityReasoning(CCstruct *CCEqualityStruct, tree_pos, tree_neg Unif.DataS
 	debug(Lib.MkLazy(func() string { return "Welcome to the CC module ! ! ! " }))
 	debug(Lib.MkLazy(func() string { return fmt.Sprintf("Atomics: %v", Lib.ListToString(atomic)) }))
 
-	substValid := []Unif.Substitutions{}
-	subsposible := allSubstitutions(atomic)
+	constList, metaList := createConstAndMetaList(atomic)
 
-	//	debug(Lib.MkLazy(func() string { return CCstruct.ToString() }))
-	for _, a := range subsposible {
-
-		CCstruct.Reset()
-		atomicv5, val := trySubtitution(CCstruct, atomic, a)
-
-		if val {
-			debug(Lib.MkLazy(func() string { return fmt.Sprintf("Atomic Val: %v", Lib.ListToString(atomicv5)) }))
-			substValid = append(substValid, a)
-		}
+	if metaList.Empty() {
+		debug(Lib.MkLazy(func() string { return "No Meta FOUND ! " }))
+		return ccOnlyConst(CCstruct, tree_pos, atomic), []Unif.Substitutions{}
 	}
 
-	debug(Lib.MkLazy(func() string { return fmt.Sprintf("Substi: %v", len(substValid)) }))
-	for _, a := range substValid {
-		debug(Lib.MkLazy(func() string { return fmt.Sprintf("Substi: %v", a.ToString()) }))
-	}
-
-	//debug(Lib.MkLazy(func() string { return fmt.Sprintf("New atomics : : %v", art[3].ToString()) }))
-
-	if len(substValid) < 1 {
-		return false, []Unif.Substitutions{}
-	} else {
-		return true, substValid
-	}
-
+	return tryEverySubstitutions(CCstruct, atomic, constList, metaList)
 }

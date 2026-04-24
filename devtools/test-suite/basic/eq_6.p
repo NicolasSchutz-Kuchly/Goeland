@@ -5,9 +5,12 @@ fof(pel55_3,axiom,
      a = b).
 
 fof(pel55_3,axiom,
+     p(a)).
+
+fof(pel55_3,axiom,
     ( a = e
         | a = f ) ).
 
 
 fof(test_eq, conjecture,
-    a = e).
+    p(e)).
