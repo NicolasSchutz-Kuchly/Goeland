@@ -78,7 +78,6 @@ func (cc *CCEqualityStruct) AddTerm(t AST.Term) (*Eqterm, int) {
 	e.setLen(lenmax)
 	cc.classes = append(cc.classes, e)
 	return e, lenmax
-
 }
 
 func (cc *CCEqualityStruct) ToString() string {
@@ -97,6 +96,7 @@ func (cc *CCEqualityStruct) ToString() string {
 }
 
 func (cc *CCEqualityStruct) retrieveEqTerm(term AST.Term) *Eqterm {
+
 	for _, e := range cc.classes {
 		if e.term.Equals(term) {
 			return e
@@ -105,26 +105,51 @@ func (cc *CCEqualityStruct) retrieveEqTerm(term AST.Term) *Eqterm {
 	return nil
 }
 
+func (cc *CCEqualityStruct) retrieveDoubleEqTerm(term1, term2 AST.Term) (*Eqterm, *Eqterm) {
+
+	var eq1 *Eqterm
+	var eq2 *Eqterm
+
+	for _, e := range cc.classes {
+
+		if eq1 == nil && e.term.Equals(term1) {
+			eq1 = e
+		}
+		if eq2 == nil && e.term.Equals(term2) {
+			eq2 = e
+		}
+		if (eq1 != nil) && (eq2 != nil) {
+			return eq1, eq2
+		}
+	}
+
+	return eq1, eq2
+}
+
 func (cc *CCEqualityStruct) createParent(e *Eqterm) bool {
 	testchange := len(cc.classes)
-	if e.isParent() && !(len(e.use) == 0) {
-		switch fun := e.term.(type) {
-		case AST.Fun:
-			args := Lib.List[AST.Term]{}
-			testExist := true
-			for i := range e.use {
-				if !find(e.use[i]).Equals(e.use[i]) {
-					testExist = false
-				}
-				args.Append(find(e.use[i]).term)
+
+	switch fun := e.term.(type) {
+	case AST.Fun:
+		args := Lib.List[AST.Term]{}
+		testExist := true
+		for _, k := range e.use {
+			res := find(k)
+			if !res.Equals(k) {
+				testExist = false
 			}
-			if testExist {
-				newparent := AST.MakeFun(fun.GetP(), Lib.ListCpy(fun.GetTyArgs()), args, fun.GetMetas())
-				l, _ := cc.AddTerm(newparent)
-				find(e).setParent(l)
-			}
-		default:
+			args.Append(res.term)
 		}
+
+		if !testExist {
+			newparent := AST.MakeFun(fun.GetP(), Lib.ListCpy(fun.GetTyArgs()), args, fun.GetMetas())
+			l, _ := cc.AddTerm(newparent)
+			find(e).setParent(find(l))
+			debug(Lib.MkLazy(func() string {
+				return fmt.Sprintf("Ajout parent normalisé %v ", newparent.ToString())
+			}))
+		}
+	default:
 	}
 
 	return testchange != len(cc.classes)
@@ -133,7 +158,7 @@ func (cc *CCEqualityStruct) createParent(e *Eqterm) bool {
 func (cc *CCEqualityStruct) UpdateParent() bool {
 	loop := false
 	for _, e := range cc.classes {
-		if e.isParent() && !(len(e.use) == 0) {
+		if e.isParent() && e.len != 0 {
 			loop = cc.createParent(e) || loop
 		}
 	}
@@ -151,7 +176,8 @@ func (cc *CCEqualityStruct) GetParentList() []*Eqterm {
 }
 
 func find(e *Eqterm) *Eqterm {
-	if e.Equals(e.parent) {
+
+	if e.isParent() {
 		return e
 	}
 	return find(e.parent)
@@ -162,39 +188,49 @@ func (cc *CCEqualityStruct) union(term *Eqterm, term2 *Eqterm) {
 
 	x := term
 	y := term2
+	px := find(x)
+	py := find(y)
 
-	if !cc.testSameparent(term, term2) {
-		if find(x).len > find(y).len || (!find(x).term.GetMetaList().Empty() && find(y).term.GetMetaList().Empty()) {
-			x, y = y, x
+	if !px.Equals(py) {
+		if len(px.term.GetMetaList().GetSlice()) > len(py.term.GetMetaList().GetSlice()) {
+			px, py = py, px
+		} else if px.len > py.len {
+			px, py = py, px
+		} else if px.len == py.len && len(px.use) > len(py.use) {
+			px, py = py, px
 		}
 
-		if (find(x).len > find(y).len) && (!find(x).term.GetMetaList().Empty() && !find(y).term.GetMetaList().Empty()) {
-			x, y = y, x
-		}
-		find(y).setParent(find(x))
+		py.setParent(px)
 
 	}
 }
 
 func (cc *CCEqualityStruct) testSameparent(term1 *Eqterm, term2 *Eqterm) bool {
+
 	return find(term1).Equals(find(term2))
 }
 
 func (cc *CCEqualityStruct) congruence() bool {
 	res := false
-	for _, e := range cc.classes {
-		if !(len(e.use) == 0) {
-			for _, e2 := range cc.classes {
-				if e2.term.GetIndex() == e.term.GetIndex() && !find(e).Equals(find(e2)) {
-					if equalMaps(e2.use, e.use) {
-						cc.union(e, e2)
-						res = true
-					}
+	for i, e := range cc.classes {
+		if len(e.use) == 0 {
+			continue
+		}
+		for j := i + 1; j < len(cc.classes); j++ {
+			e2 := cc.classes[j]
+
+			if e2.term.GetIndex() == e.term.GetIndex() && !find(e).Equals(find(e2)) {
+				if equalMaps(e2.use, e.use) {
+					cc.union(e, e2)
+					debug(Lib.MkLazy(func() string {
+						return fmt.Sprintf("Ajout union congruence : %v = %v (Parent : %v)", e.term.ToString(), e2.term.ToString(), find(e).term.ToString())
+					}))
+					res = true
 				}
 			}
-
 		}
 	}
+
 	return res
 }
 
@@ -210,7 +246,7 @@ func (t *Eqterm) setParent(p *Eqterm) {
 }
 
 func (t *Eqterm) isParent() bool {
-	return t.Equals(find(t))
+	return t.Equals(t.parent)
 }
 
 func (t *Eqterm) setLen(p int) {
@@ -229,8 +265,12 @@ func NewEqTerm(term *AST.Term) *Eqterm {
 }
 
 func equalMaps(a, b map[int]*Eqterm) bool {
-	for k := range a {
-		if !(find(a[k]).Equals(find(b[k]))) {
+	if len(a) != len(b) {
+		return false
+	}
+
+	for i, v := range a {
+		if !find(v).Equals(find(b[i])) {
 			return false
 		}
 	}
@@ -238,5 +278,6 @@ func equalMaps(a, b map[int]*Eqterm) bool {
 }
 
 func (t *Eqterm) Equals(t1 *Eqterm) bool {
+
 	return t.term.Equals(t1.term)
 }

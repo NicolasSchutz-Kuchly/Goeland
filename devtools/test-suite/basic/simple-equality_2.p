@@ -1,4 +1,4 @@
-% Trivial equality test to check that we don't loop-rewrite
+% Trivial equality test to check if the congruence can go deep
 % result: VALID
 
 fof(eq, axiom, a = f(a)).

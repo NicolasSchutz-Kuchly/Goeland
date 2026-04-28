@@ -3,13 +3,13 @@
 
 fof(eq, axiom, 
     (! [X,Y] :
-    p(X,Y) = X)).
+    f(X,Y) = X)).
 
 
 fof(eq, axiom,
     a = b).
 
 fof(test_quant_1, conjecture, 
-    p(a,a) = p(b,c)).
+    f(a,a) = f(b,c)).
 
 

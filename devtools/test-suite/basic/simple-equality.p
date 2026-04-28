@@ -1,4 +1,4 @@
-% Trivial equality test to check that we don't loop-rewrite
+% Trivial equality with Meta only
 % result: VALID
 
 fof(eq, axiom, 
