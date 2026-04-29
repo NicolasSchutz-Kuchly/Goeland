@@ -1,15 +1,7 @@
-% checks whether the transitivity rule is validated by our equality reasoning
-% result: VALID
+% result:VALID
 
-fof(eq_a_b, axiom,
-   p(a)).
+fof(eq, axiom, (! [X] : (X = f(X)))).
 
-fof(eq_a_b, axiom,
-     p(b)).
+fof(eq_a_b, axiom, p(a)).
 
-
-
-fof(eq_a_b, axiom,
-   f(a) = f(b)).
-
-
+fof(test_eq, conjecture, p(f(a))).

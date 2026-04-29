@@ -394,18 +394,29 @@ func testresult(CCstruct *CCEqualityStruct, atomic Lib.List[AST.Form]) bool {
 	atomicv2, ineq := newAtomics(CCstruct, atomic)
 
 	debug(Lib.MkLazy(func() string {
-		return fmt.Sprintf("\n New atomics : : %v \n STRUCT : : %v", Lib.ListToString(atomicv2), CCstruct.ToString())
+		//return fmt.Sprintf("\n New atomics: %v ", Lib.ListToString(atomicv2))
+		return fmt.Sprintf("\n New atomics: %v \n %v", Lib.ListToString(atomicv2), CCstruct.ToString())
 	}))
 
 	if testInequality(ineq, CCstruct) {
+
 		return true
 	}
 
 	newtreeneg := Unif.NewNode().MakeDataStruct(atomicv2, false)
 
 	for _, i := range atomicv2.GetSlice() {
-		b, _ := newtreeneg.Unify(i)
+		b, sub := newtreeneg.Unify(i)
+		var subst []string
+
+		for _, a := range sub {
+			subst = append(subst, a.ToString())
+		}
+
 		if b {
+			debug(Lib.MkLazy(func() string {
+				return fmt.Sprintf("\n CONTRADITION: %v ; %v", i.ToString(), strings.Join(subst, " ; "))
+			}))
 			return true
 
 		}
@@ -421,6 +432,9 @@ func testInequality(ineq Lib.List[eqStruct.TermPair], CCstruct *CCEqualityStruct
 
 		testineq = CCstruct.testSameparent(CCstruct.retrieveEqTerm(a.GetT1()), CCstruct.retrieveEqTerm(a.GetT2()))
 		if testineq {
+			debug(Lib.MkLazy(func() string {
+				return fmt.Sprintf("\n CONTRADITION: %v ", a.ToString())
+			}))
 			break
 		}
 	}
@@ -439,7 +453,7 @@ func EqStructCreateSimple(CCstruct *CCEqualityStruct, tree_pos Unif.DataStructur
 		sub := a.GetSubTerms().GetSlice()
 		for _, t := range sub {
 			CCstruct.AddTerm(t)
-			debug(Lib.MkLazy(func() string { return fmt.Sprintf("Ajout %v dans CCstruct", t.ToString()) }))
+
 		}
 	}
 	//debug(Lib.MkLazy(func() string { return CCstruct.ToString() }))
@@ -447,6 +461,7 @@ func EqStructCreateSimple(CCstruct *CCEqualityStruct, tree_pos Unif.DataStructur
 
 	for CCstruct.congruence() {
 	}
+
 	for CCstruct.UpdateParent() {
 	}
 	//debug(Lib.MkLazy(func() string { return fmt.Sprintf("cc : %v", CCstruct.ToString()) }))
@@ -458,12 +473,13 @@ func addEqualityConst(CCstruct *CCEqualityStruct, tree_pos Unif.DataStructure) *
 	eq := retrieveEqualities(tree_pos.Copy())
 
 	for _, b := range eq {
-		eq1, eq2 := CCstruct.retrieveDoubleEqTerm(b.GetT1(), b.GetT2())
+		eq1 := CCstruct.retrieveEqTerm(b.GetT1())
+		eq2 := CCstruct.retrieveEqTerm(b.GetT2())
 
 		CCstruct.union(eq1, eq2)
-		debug(Lib.MkLazy(func() string {
-			return fmt.Sprintf("Ajout union : %v = %v (Parent : %v)", eq1.term.ToString(), eq2.term.ToString(), find(eq1).term.ToString())
-		}))
+		//debug(Lib.MkLazy(func() string {
+		//	return fmt.Sprintf("Ajout union : %v = %v (Parent : %v)", eq1.term.ToString(), eq2.term.ToString(), find(eq1).term.ToString())
+		//}))
 	}
 
 	return CCstruct

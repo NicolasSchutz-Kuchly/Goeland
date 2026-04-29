@@ -73,81 +73,9 @@ func tryUnifySAndT(s, t AST.Term) (bool, Unif.Substitutions) {
 	return !subst.Equals(Unif.Failure()), subst
 }
 
-func robinsonUnify(term1, term2 AST.Term, s Unif.Substitutions) Unif.Substitutions {
-	term1 = walkSubst(term1, s)
-	term2 = walkSubst(term2, s)
-
-	if term1.Equals(term2) {
-		return s
-	}
-
-	switch t1 := term1.(type) {
-	case AST.Meta:
-		if !Unif.OccurCheckValid(t1, term2) {
-			return Unif.Failure()
-		}
-		s.Set(t1, term2)
-		Unif.EliminateMeta(&s)
-		Unif.Eliminate(&s)
-		return s
-
-	case AST.Fun:
-		switch t2 := term2.(type) {
-		case AST.Meta:
-			if !Unif.OccurCheckValid(t2, term1) {
-				return Unif.Failure()
-			}
-			s.Set(t2, term1)
-			Unif.EliminateMeta(&s)
-			Unif.Eliminate(&s)
-			return s
-
-		case AST.Fun:
-			if !t1.GetID().Equals(t2.GetID()) {
-				return Unif.Failure()
-			}
-			args1 := t1.GetArgs().GetSlice()
-			args2 := t2.GetArgs().GetSlice()
-			if len(args1) != len(args2) {
-				return Unif.Failure()
-			}
-			for i := range args1 {
-				s = robinsonUnify(args1[i].Copy(), args2[i].Copy(), s)
-				if s.Equals(Unif.Failure()) {
-					return Unif.Failure()
-				}
-			}
-			return s
-
-		default:
-			return Unif.Failure()
-		}
-
-	default:
-		// Var or any other term kind: not expected after Skolemisation.
-		return Unif.Failure()
-	}
-}
-
-// walkSubst chases meta-variable bindings in s until reaching an unbound
-// meta or a non-meta term.
-func walkSubst(t AST.Term, s Unif.Substitutions) AST.Term {
-	for t.IsMeta() {
-		val, idx := s.Get(t.ToMeta())
-		if idx == -1 {
-			break
-		}
-		t = val
-	}
-	return t
-}
-
 /* check unfiication */
 func checkUnif(ep EqualityProblem) (found bool, substs_res []Unif.Substitutions) {
-	debug(Lib.MkLazy(func() string { return fmt.Sprintf("S = %v", (ep.GetS().ToString())) }))
-	debug(Lib.MkLazy(func() string { return fmt.Sprintf("T = %v", (ep.GetT().ToString())) }))
-	subst_found := robinsonUnify(ep.GetS(), ep.GetT(), []Unif.Substitution{})
-	if !subst_found.Equals(Unif.Failure()) {
+	if ok, subst_found := tryUnifySAndT(ep.GetS(), ep.GetT()); ok {
 		debug(Lib.MkLazy(func() string { return "Unif found !" }))
 		new_subst := Unif.AddUnification(ep.GetS(), ep.GetT(), ep.getC().getSubst())
 		if !new_subst.Equals(Unif.Failure()) {

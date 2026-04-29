@@ -1,5 +1,5 @@
 % checks whether the transitivity rule is validated by our equality reasoning
-
+%valid
 
 fof(pel55_3,axiom,
      a = b).
@@ -9,7 +9,7 @@ fof(pel55_3,axiom,
 
 fof(pel55_3,axiom,
     ( a = e
-        | a = f ) ).
+        | b = e ) ).
 
 
 fof(test_eq, conjecture,

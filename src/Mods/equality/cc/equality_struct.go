@@ -45,15 +45,17 @@ import (
 )
 
 type CCEqualityStruct struct {
-	classes []*Eqterm
+	classes map[int][]*Eqterm
 }
 
 func newCCEqualityStruct() *CCEqualityStruct {
-	return &CCEqualityStruct{}
+	return &CCEqualityStruct{classes: make(map[int][]*Eqterm)}
 }
 
 func (cc *CCEqualityStruct) Reset() {
-	cc.classes = nil
+	for k := range cc.classes {
+		delete(cc.classes, k)
+	}
 }
 
 func (cc *CCEqualityStruct) AddTerm(t AST.Term) (*Eqterm, int) {
@@ -62,6 +64,7 @@ func (cc *CCEqualityStruct) AddTerm(t AST.Term) (*Eqterm, int) {
 	}
 
 	e := NewEqTerm(&t)
+	//debug(Lib.MkLazy(func() string { return fmt.Sprintf("Ajout %v dans CCstruct", t.ToString()) }))
 	e.setParent(e)
 	lenmax := 1
 	lenmaj := 1
@@ -76,7 +79,8 @@ func (cc *CCEqualityStruct) AddTerm(t AST.Term) (*Eqterm, int) {
 	}
 
 	e.setLen(lenmax)
-	cc.classes = append(cc.classes, e)
+	index := e.term.GetIndex()
+	cc.classes[index] = append(cc.classes[index], e)
 	return e, lenmax
 }
 
@@ -86,44 +90,24 @@ func (cc *CCEqualityStruct) ToString() string {
 	b.WriteString("\nEquality Struct :\n")
 
 	for _, c := range cc.classes {
+		for _, d := range c {
 
-		b.WriteString(fmt.Sprintf("	%s", c.ToString()))
+			b.WriteString(fmt.Sprintf("	%s", d.ToString()))
 
-		b.WriteString("\n")
+			b.WriteString("\n")
+		}
 	}
-
 	return b.String()
 }
 
 func (cc *CCEqualityStruct) retrieveEqTerm(term AST.Term) *Eqterm {
 
-	for _, e := range cc.classes {
+	for _, e := range cc.classes[term.GetIndex()] {
 		if e.term.Equals(term) {
 			return e
 		}
 	}
 	return nil
-}
-
-func (cc *CCEqualityStruct) retrieveDoubleEqTerm(term1, term2 AST.Term) (*Eqterm, *Eqterm) {
-
-	var eq1 *Eqterm
-	var eq2 *Eqterm
-
-	for _, e := range cc.classes {
-
-		if eq1 == nil && e.term.Equals(term1) {
-			eq1 = e
-		}
-		if eq2 == nil && e.term.Equals(term2) {
-			eq2 = e
-		}
-		if (eq1 != nil) && (eq2 != nil) {
-			return eq1, eq2
-		}
-	}
-
-	return eq1, eq2
 }
 
 func (cc *CCEqualityStruct) createParent(e *Eqterm) bool {
@@ -157,22 +141,14 @@ func (cc *CCEqualityStruct) createParent(e *Eqterm) bool {
 
 func (cc *CCEqualityStruct) UpdateParent() bool {
 	loop := false
-	for _, e := range cc.classes {
-		if e.isParent() && e.len != 0 {
-			loop = cc.createParent(e) || loop
+	for _, f := range cc.classes {
+		for _, e := range f {
+			if e.isParent() && e.len != 0 {
+				loop = cc.createParent(e) || loop
+			}
 		}
 	}
 	return loop
-}
-
-func (cc *CCEqualityStruct) GetParentList() []*Eqterm {
-	res := []*Eqterm{}
-	for _, e := range cc.classes {
-		if e.isParent() {
-			res = append(res, e)
-		}
-	}
-	return res
 }
 
 func find(e *Eqterm) *Eqterm {
@@ -180,8 +156,8 @@ func find(e *Eqterm) *Eqterm {
 	if e.isParent() {
 		return e
 	}
-	return find(e.parent)
-
+	e.parent = find(e.parent)
+	return e.parent
 }
 
 func (cc *CCEqualityStruct) union(term *Eqterm, term2 *Eqterm) {
@@ -212,20 +188,28 @@ func (cc *CCEqualityStruct) testSameparent(term1 *Eqterm, term2 *Eqterm) bool {
 
 func (cc *CCEqualityStruct) congruence() bool {
 	res := false
-	for i, e := range cc.classes {
-		if len(e.use) == 0 {
+	for _, termlist := range cc.classes {
+		if len(termlist) < 2 {
 			continue
 		}
-		for j := i + 1; j < len(cc.classes); j++ {
-			e2 := cc.classes[j]
 
-			if e2.term.GetIndex() == e.term.GetIndex() && !find(e).Equals(find(e2)) {
-				if equalMaps(e2.use, e.use) {
-					cc.union(e, e2)
-					debug(Lib.MkLazy(func() string {
-						return fmt.Sprintf("Ajout union congruence : %v = %v (Parent : %v)", e.term.ToString(), e2.term.ToString(), find(e).term.ToString())
-					}))
-					res = true
+		for i, e := range termlist {
+			if len(e.use) == 0 {
+				continue
+			}
+
+			for j := i + 1; j < len(termlist); j++ {
+				e2 := termlist[j]
+				pe2 := find(e2)
+				pe := find(e)
+				if !pe.Equals(pe2) {
+					if equalMaps(e2.use, e.use) {
+						cc.union(e, e2)
+						debug(Lib.MkLazy(func() string {
+							return fmt.Sprintf("Ajout union congruence : %v = %v (Parent : %v)", e.term.ToString(), e2.term.ToString(), pe.term.ToString())
+						}))
+						res = true
+					}
 				}
 			}
 		}

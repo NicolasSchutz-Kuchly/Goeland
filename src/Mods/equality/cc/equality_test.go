@@ -873,7 +873,7 @@ func TestFullPipelineConsistency(t *testing.T) {
 	e2, _ := CCstruct.AddTerm(b)
 	e3, _ := CCstruct.AddTerm(c)
 
-	f1, _ := CCstruct.AddTerm(fa)
+	f1, _ := CCstruct.AddTerm(fc)
 	f2, _ := CCstruct.AddTerm(fb)
 
 	CCstruct.union(e1, e2)

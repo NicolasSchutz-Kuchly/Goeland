@@ -1,21 +1,12 @@
 
 
 fof(eq_a_b, axiom,
-   p(a)).
-
-fof(eq_a_b, axiom,
    a=b).
 
 
 fof(eq_a_b, axiom,
-   p(b)).
+   p(f(a,c))).
 
-fof(eq_a_b, axiom,
-   p(c)).
-
-fof(eq_a_b, axiom,
-   p(f(a,b))).
-
-fof(eq_a_b, axiom,
+fof(eq_a_b, conjecture,
    p(f(b,c))).
 

@@ -1,4 +1,4 @@
-% result: VALID
+% result:not VALID
 
 fof(eq, axiom,
         (! [X,Y] :
