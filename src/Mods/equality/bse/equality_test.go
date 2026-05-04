@@ -198,7 +198,7 @@ func initTestVariable() {
 
 	a_y_type_list := a.GetTyArgs()
 	a_y_type_list.Append(y.GetTy())
-	fay = AST.MakerFun(f_id, a_y_type_list,  Lib.MkListV[AST.Term](a, y))
+	fay = AST.MakerFun(f_id, a_y_type_list, Lib.MkListV[AST.Term](a, y))
 
 	a_b_type_list := a.GetTyArgs()
 	a_b_type_list.Append(b.GetTyArgs().GetSlice()...)
@@ -221,11 +221,11 @@ func initTestVariable() {
 	x_fyz_type_list := Lib.MkListV[AST.Ty](x.GetTy())
 	x_fyz_type_list.Append(fyz.GetTyArgs().GetSlice()...)
 	f_x_fyz = AST.MakerFun(f_id, x_fyz_type_list, Lib.MkListV[AST.Term](x, fyz))
-	
+
 	fab_c_type_list := fab.GetTyArgs()
 	fab_c_type_list.Append(c.GetTyArgs().GetSlice()...)
 	f_fab_c = AST.MakerFun(f_id, fab_c_type_list, Lib.MkListV[AST.Term](fab, c))
-	
+
 	a_fbc_type_list := a.GetTyArgs()
 	a_fbc_type_list.Append(fbc.GetTyArgs().GetSlice()...)
 	f_a_fbc = AST.MakerFun(f_id, a_fbc_type_list, Lib.MkListV[AST.Term](a, fbc))
@@ -406,7 +406,6 @@ func TestAS(t *testing.T) {
 		Lib.MkLazy(func() string { return fmt.Sprintf("Current EP : %v", new_ep.ToString()) }),
 	)
 
-
 	debug(
 		Lib.MkLazy(func() string { return fmt.Sprintf("Expected : %v", expected_ep.ToString()) }),
 	)
@@ -554,17 +553,17 @@ func TestConstaintes9(t *testing.T) {
 // ---------------------------------------------------------------------------
 // LPO / PREC edge cases
 // ---------------------------------------------------------------------------
- 
+
 // Two identical deferred constraints: the second must be accepted (idempotent).
 // f(X) ≺ a  added twice → still only one entry in prec list.
 func TestConstraints_Idempotent(t *testing.T) {
 	tp_fx_a := eqStruct.MakeTermPair(fx, a)
 	c := MakeConstraint(PREC, tp_fx_a)
 	cs := makeEmptyConstraintStruct()
- 
+
 	res1 := cs.appendIfConsistent(c)
 	res2 := cs.appendIfConsistent(c) // duplicate
- 
+
 	if !res1 || !res2 {
 		t.Fatalf("Both insertions should return true for a duplicate, got %v %v", res1, res2)
 	}
@@ -572,14 +571,14 @@ func TestConstraints_Idempotent(t *testing.T) {
 		t.Fatalf("Duplicate constraint should not grow the prec list; got %v", cs.getPrec().toString())
 	}
 }
- 
+
 // Two distinct deferred constraints that are compatible: both must be accepted.
 // f(X) ≺ a  and  g(Y) ≺ b  — different metas, no conflict.
 func TestConstraints_TwoCompatibleDeferred(t *testing.T) {
 	c1 := MakeConstraint(PREC, eqStruct.MakeTermPair(fx, a))
 	c2 := MakeConstraint(PREC, eqStruct.MakeTermPair(fy, b))
 	cs := makeEmptyConstraintStruct()
- 
+
 	if !cs.appendIfConsistent(c1) {
 		t.Fatalf("c1 should be consistent")
 	}
@@ -590,19 +589,19 @@ func TestConstraints_TwoCompatibleDeferred(t *testing.T) {
 		t.Fatalf("Expected 2 deferred constraints, got %v", cs.getPrec().toString())
 	}
 }
- 
+
 // g(g(g(X))) ≺ X is an occur-check violation in LPO (X appears inside gggx).
 // Must be rejected.
 func TestConstraints_OccurCheckPREC(t *testing.T) {
 	tp := eqStruct.MakeTermPair(gggx, x)
 	c := MakeConstraint(PREC, tp)
 	cs := makeEmptyConstraintStruct()
- 
+
 	if cs.appendIfConsistent(c) {
 		t.Fatalf("ggg(X) ≺ X should be rejected (occur-check)")
 	}
 }
- 
+
 // Ground PREC that is trivially satisfied and does not interact with any
 // deferred constraint: a ≺ f(a). Pure ground, f > a, no metas.
 // Expected: consistent, not added to prec list (ground/comparable).
@@ -610,7 +609,7 @@ func TestConstraints_GroundSatisfied(t *testing.T) {
 	tp := eqStruct.MakeTermPair(a, fa)
 	c := MakeConstraint(PREC, tp)
 	cs := makeEmptyConstraintStruct()
- 
+
 	if !cs.appendIfConsistent(c) {
 		t.Fatalf("a ≺ f(a) should be consistent (ground, f>a)")
 	}
@@ -618,25 +617,25 @@ func TestConstraints_GroundSatisfied(t *testing.T) {
 		t.Fatalf("Ground comparable constraint should not be deferred; prec=%v", cs.getPrec().toString())
 	}
 }
- 
+
 // Ground PREC that is violated: f(a) ≺ a. f > a, so f(a) > a in LPO.
 // Expected: rejected.
 func TestConstraints_GroundViolated(t *testing.T) {
 	tp := eqStruct.MakeTermPair(fa, a)
 	c := MakeConstraint(PREC, tp)
 	cs := makeEmptyConstraintStruct()
- 
+
 	if cs.appendIfConsistent(c) {
 		t.Fatalf("f(a) ≺ a should be rejected (ground, f>a so f(a)>a)")
 	}
 }
- 
+
 // Three-way cycle: X ≺ f(X) is fine, but then adding f(X) ≺ X must fail.
 func TestConstraints_Cycle(t *testing.T) {
 	c_x_fx := MakeConstraint(PREC, eqStruct.MakeTermPair(x, fx))
 	c_fx_x := MakeConstraint(PREC, eqStruct.MakeTermPair(fx, x))
 	cs := makeEmptyConstraintStruct()
- 
+
 	// X ≺ f(X): X occurs inside f(X), so this is detected as comparable and
 	// satisfied (occur-check direction), prec list stays empty.
 	if !cs.appendIfConsistent(c_x_fx) {
@@ -647,90 +646,90 @@ func TestConstraints_Cycle(t *testing.T) {
 		t.Fatalf("f(X) ≺ X should be rejected after X ≺ f(X)")
 	}
 }
- 
+
 // ---------------------------------------------------------------------------
 // EQ edge cases
 // ---------------------------------------------------------------------------
- 
+
 // EQ constraint with already-equal ground terms: a ≃ a → trivially consistent.
 func TestConstraintsEQ_SameTerm(t *testing.T) {
 	c := MakeConstraint(EQ, eqStruct.MakeTermPair(a, a))
 	cs := makeEmptyConstraintStruct()
- 
+
 	if !cs.appendIfConsistent(c) {
 		t.Fatalf("a ≃ a should be consistent")
 	}
 }
- 
+
 // EQ constraint between two distinct ground constants: a ≃ b → not unifiable.
 func TestConstraintsEQ_GroundConflict(t *testing.T) {
 	c := MakeConstraint(EQ, eqStruct.MakeTermPair(a, b))
 	cs := makeEmptyConstraintStruct()
- 
+
 	if cs.appendIfConsistent(c) {
 		t.Fatalf("a ≃ b should be rejected (a ≠ b ground)")
 	}
 }
- 
+
 // EQ constraint X ≃ a followed by a PREC constraint f(X) ≺ a.
 // After substituting X→a, f(X) becomes f(a), and f(a) ≺ a is ground-violated.
 // Expected: the PREC is rejected.
 func TestConstraints_EQThenPREC_Conflict(t *testing.T) {
 	cs := makeEmptyConstraintStruct()
- 
+
 	cEQ := MakeConstraint(EQ, eqStruct.MakeTermPair(x, a))
 	if !cs.appendIfConsistent(cEQ) {
 		t.Fatalf("X ≃ a should be accepted")
 	}
- 
+
 	cPREC := MakeConstraint(PREC, eqStruct.MakeTermPair(fx, a))
 	if cs.appendIfConsistent(cPREC) {
 		t.Fatalf("f(X) ≺ a with X→a means f(a) ≺ a, which is violated — should be rejected")
 	}
 }
- 
+
 // EQ constraint X ≃ a followed by a PREC constraint a ≺ f(X).
 // After substituting X→a, a ≺ f(a) is ground-satisfied.
 // Expected: the PREC is accepted.
 func TestConstraints_EQThenPREC_Satisfied(t *testing.T) {
 	cs := makeEmptyConstraintStruct()
- 
+
 	cEQ := MakeConstraint(EQ, eqStruct.MakeTermPair(x, a))
 	if !cs.appendIfConsistent(cEQ) {
 		t.Fatalf("X ≃ a should be accepted")
 	}
- 
+
 	cPREC := MakeConstraint(PREC, eqStruct.MakeTermPair(a, fx))
 	if !cs.appendIfConsistent(cPREC) {
 		t.Fatalf("a ≺ f(X) with X→a means a ≺ f(a), which is satisfied — should be accepted")
 	}
 }
- 
+
 // Deferred PREC f(X) ≺ a, then EQ X ≃ a.
 // Applying X→a to the deferred constraint gives f(a) ≺ a — violated.
 // The EQ must be rejected because it breaks the stored PREC constraint.
 func TestConstraints_PRECThenEQ_Conflict(t *testing.T) {
 	cs := makeEmptyConstraintStruct()
- 
+
 	cPREC := MakeConstraint(PREC, eqStruct.MakeTermPair(fx, a))
 	if !cs.appendIfConsistent(cPREC) {
 		t.Fatalf("f(X) ≺ a should be deferred")
 	}
- 
+
 	cEQ := MakeConstraint(EQ, eqStruct.MakeTermPair(x, a))
 	if cs.appendIfConsistent(cEQ) {
 		t.Fatalf("X ≃ a should be rejected: it instantiates f(X) ≺ a to f(a) ≺ a which is violated")
 	}
 }
- 
+
 // Two conflicting EQ constraints: X ≃ a then X ≃ b.
 // Second should be rejected because the substitution already maps X to a.
 func TestConstraintsEQ_ConflictingSubst(t *testing.T) {
 	cs := makeEmptyConstraintStruct()
- 
+
 	c1 := MakeConstraint(EQ, eqStruct.MakeTermPair(x, a))
 	c2 := MakeConstraint(EQ, eqStruct.MakeTermPair(x, b))
- 
+
 	if !cs.appendIfConsistent(c1) {
 		t.Fatalf("X ≃ a should be accepted")
 	}
@@ -738,22 +737,22 @@ func TestConstraintsEQ_ConflictingSubst(t *testing.T) {
 		t.Fatalf("X ≃ b should be rejected: X is already bound to a")
 	}
 }
- 
+
 // Two compatible EQ constraints on different metas: X ≃ a then Y ≃ b.
 // Both should be accepted and the substitution should contain both bindings.
 func TestConstraintsEQ_CompatibleSubst(t *testing.T) {
 	cs := makeEmptyConstraintStruct()
- 
+
 	c1 := MakeConstraint(EQ, eqStruct.MakeTermPair(x, a))
 	c2 := MakeConstraint(EQ, eqStruct.MakeTermPair(y, b))
- 
+
 	if !cs.appendIfConsistent(c1) {
 		t.Fatalf("X ≃ a should be accepted")
 	}
 	if !cs.appendIfConsistent(c2) {
 		t.Fatalf("Y ≃ b should be accepted alongside X ≃ a")
 	}
- 
+
 	s := cs.getSubst()
 	xBound := false
 	yBound := false
@@ -770,14 +769,14 @@ func TestConstraintsEQ_CompatibleSubst(t *testing.T) {
 		t.Fatalf("Expected substitution {X→a, Y→b}, got %v", s.ToString())
 	}
 }
- 
+
 // Substitution applied to a PREC that remains comparable after instantiation,
 // but in the satisfying direction: deferred f(X) ≺ g(a), then X ≃ a.
 // After X→a: f(a) ≺ g(a). f < g so f(a) < g(a) in LPO — satisfied.
 // Expected: EQ accepted, prec list cleared (constraint resolved).
 func TestConstraints_PRECResolvedByEQ(t *testing.T) {
 	cs := makeEmptyConstraintStruct()
- 
+
 	// f(X) ≺ g(a): f < g, but X is free → deferred
 	cPREC := MakeConstraint(PREC, eqStruct.MakeTermPair(fx, ga))
 	if !cs.appendIfConsistent(cPREC) {
@@ -786,14 +785,14 @@ func TestConstraints_PRECResolvedByEQ(t *testing.T) {
 	if len(cs.getPrec()) != 1 {
 		t.Fatalf("f(X) ≺ g(a) should be in the prec list, got %v", cs.getPrec().toString())
 	}
- 
+
 	// X ≃ a: should be accepted; after applying, the deferred PREC is satisfied.
 	cEQ := MakeConstraint(EQ, eqStruct.MakeTermPair(x, a))
 	if !cs.appendIfConsistent(cEQ) {
 		t.Fatalf("X ≃ a should be accepted; it resolves f(X) ≺ g(a) to f(a) ≺ g(a) which holds")
 	}
 }
- 
+
 // Empty constraint struct — isEmpty must hold.
 func TestConstraintStruct_Empty(t *testing.T) {
 	cs := makeEmptyConstraintStruct()
@@ -801,7 +800,7 @@ func TestConstraintStruct_Empty(t *testing.T) {
 		t.Fatalf("Fresh constraint struct should be empty")
 	}
 }
- 
+
 // After a successful PREC insertion the struct is no longer empty.
 func TestConstraintStruct_NotEmptyAfterInsert(t *testing.T) {
 	cs := makeEmptyConstraintStruct()
@@ -811,19 +810,19 @@ func TestConstraintStruct_NotEmptyAfterInsert(t *testing.T) {
 		t.Fatalf("Struct should not be empty after inserting a deferred constraint")
 	}
 }
- 
+
 // copy() must produce a deep copy: mutating the copy must not affect the original.
 func TestConstraintStruct_Copy(t *testing.T) {
 	cs := makeEmptyConstraintStruct()
 	c := MakeConstraint(PREC, eqStruct.MakeTermPair(fx, a))
 	cs.appendIfConsistent(c)
- 
+
 	csCopy := cs.copy()
- 
+
 	// Add a new constraint only to the copy.
 	c2 := MakeConstraint(PREC, eqStruct.MakeTermPair(fy, b))
 	csCopy.appendIfConsistent(c2)
- 
+
 	if len(cs.getPrec()) != 1 {
 		t.Fatalf("Original prec list should still have 1 element after mutating the copy; got %v", cs.getPrec().toString())
 	}
@@ -831,14 +830,14 @@ func TestConstraintStruct_Copy(t *testing.T) {
 		t.Fatalf("Copy prec list should have 2 elements; got %v", csCopy.getPrec().toString())
 	}
 }
- 
+
 // A substitution that maps X to itself (identity) should be treated as empty/trivial.
 func TestConstraintsEQ_IdentitySubst(t *testing.T) {
 	cs := makeEmptyConstraintStruct()
 	s := Unif.MakeEmptySubstitution()
 	s.Set(x, x)
 	cs.setSubst(s)
- 
+
 	// f(X) ≺ a with a substitution that maps X→X: effectively no change.
 	cPREC := MakeConstraint(PREC, eqStruct.MakeTermPair(fx, a))
 	if !cs.appendIfConsistent(cPREC) {

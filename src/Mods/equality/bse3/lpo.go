@@ -34,7 +34,7 @@
 * This file contains the type definitionof the lixicographic path ordering.
 **/
 
-package bse
+package bse3
 
 import (
 	"fmt"

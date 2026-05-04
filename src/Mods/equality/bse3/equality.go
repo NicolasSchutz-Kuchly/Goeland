@@ -34,7 +34,7 @@
 * This file implements the main logic behind the equality plugin.
 **/
 
-package bse
+package bse3
 
 import (
 	"github.com/GoelandProver/Goeland/AST"

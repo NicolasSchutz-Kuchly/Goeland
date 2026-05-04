@@ -37,6 +37,8 @@
 package bse
 
 import (
+	"fmt"
+
 	"github.com/GoelandProver/Goeland/AST"
 	"github.com/GoelandProver/Goeland/Core"
 	"github.com/GoelandProver/Goeland/Glob"
@@ -64,6 +66,7 @@ func SetTryEquality() {
 func TryEquality(atomics_for_dmt Core.FormAndTermsList, st Search.State, new_atomics Core.FormAndTermsList, father_id uint64, cha Search.Communication, node_id int, original_node_id int) bool {
 	if !Glob.GetDMTBeforeEq() || len(atomics_for_dmt) == 0 || len(st.GetLF()) == 0 {
 		debug(Lib.MkLazy(func() string { return "Try apply EQ !" }))
+
 		if len(new_atomics) > 0 || len(st.GetLF()) == 0 {
 			debug(Lib.MkLazy(func() string { return "EQ is applicable !" }))
 			atomics_plus_dmt := append(st.GetAtomic(), atomics_for_dmt...)
@@ -106,10 +109,22 @@ func TryEquality(atomics_for_dmt Core.FormAndTermsList, st Search.State, new_ato
 **/
 func EqualityReasoning(eqStruct eqStruct.EqualityStruct, tree_pos, tree_neg Unif.DataStructure, atomic Lib.List[AST.Form], originalNodeId int) (bool, []Unif.Substitutions) {
 	debug(Lib.MkLazy(func() string { return "ER call" }))
+	debug(Lib.MkLazy(func() string { return fmt.Sprintf("Atomics: %v", Lib.ListToString(atomic)) }))
 	problem, equalities := buildEqualityProblemMultiList(atomic, tree_pos, tree_neg)
 	if equalities {
 		return RunEqualityReasoning(eqStruct, problem)
 	} else {
-		return false, []Unif.Substitutions{}
+		substitut := []Unif.Substitutions{}
+		for _, j := range atomic.GetSlice() {
+			debug(Lib.MkLazy(func() string { return fmt.Sprintf("%v ", j.ToString()) }))
+			result, substi := Search.SearchInequalities(j)
+
+			if result {
+				debug(Lib.MkLazy(func() string { return fmt.Sprintf("SEARCH INEQ TRUE") }))
+				substitut = append(substitut, substi)
+			}
+		}
+
+		return len(substitut) != 0, substitut
 	}
 }

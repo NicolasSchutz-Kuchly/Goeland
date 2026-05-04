@@ -34,7 +34,7 @@
 * This file contains the functin to compute the applicable rules.
 **/
 
-package bse
+package bse3
 
 import (
 	"fmt"

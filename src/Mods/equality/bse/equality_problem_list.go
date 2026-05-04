@@ -265,6 +265,7 @@ func buildEqualityProblemMultiList(fl Lib.List[AST.Form], tp, tn Unif.DataStruct
 	if len(eq) == 0 {
 		return res, false
 	}
+
 	res = append(res, buildEqualityProblemMultiListFromNEQ(retrieveInequalities(tn.Copy()), eq.copy())...)
 	debug(
 		Lib.MkLazy(func() string { return fmt.Sprintf("Res after FromNEQ : %v", res.ToString()) }),

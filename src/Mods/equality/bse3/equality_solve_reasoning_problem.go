@@ -34,7 +34,7 @@
 * This file contains the functions to apply equality raasoning on a problem, a list and a multilist.
 **/
 
-package bse
+package bse3
 
 import (
 	"fmt"

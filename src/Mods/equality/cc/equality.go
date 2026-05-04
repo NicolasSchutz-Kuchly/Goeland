@@ -441,12 +441,6 @@ func testInequality(ineq Lib.List[eqStruct.TermPair], CCstruct *CCEqualityStruct
 	return testineq
 }
 
-func congruenceClosure(CCstruct *CCEqualityStruct, tree_pos Unif.DataStructure, atomic Lib.List[AST.Form]) bool {
-
-	CCstruct = EqStructCreateSimple(CCstruct, tree_pos, atomic)
-	return testresult(CCstruct, atomic)
-}
-
 func EqStructCreateSimple(CCstruct *CCEqualityStruct, tree_pos Unif.DataStructure, atomic Lib.List[AST.Form]) *CCEqualityStruct {
 
 	for _, a := range atomic.GetSlice() {
@@ -543,8 +537,9 @@ func EqualityReasoning(CCstruct *CCEqualityStruct, tree_pos, tree_neg Unif.DataS
 	debug(Lib.MkLazy(func() string { return fmt.Sprintf("Atomics: %v", Lib.ListToString(atomic)) }))
 
 	//constList, metaList := createConstAndMetaList(atomic)
+	CCstruct = EqStructCreateSimple(CCstruct, tree_pos, atomic)
 
-	return congruenceClosure(CCstruct, tree_pos, atomic), []Unif.Substitutions{}
+	return testresult(CCstruct, atomic), []Unif.Substitutions{}
 
 	//return tryEverySubstitutions(CCstruct, atomic, constList, metaList)
 }

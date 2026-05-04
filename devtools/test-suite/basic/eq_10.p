@@ -1,8 +1,9 @@
-% result:not VALID
+% result:VALID
 
 fof(eq, axiom,
         (! [X,Y] :
         X = f(X,Y))).
+
 fof(eq, axiom,
         (! [Z,Y] :
         f(Z,Y) = f(Y,Z))).

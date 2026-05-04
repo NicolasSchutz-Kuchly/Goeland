@@ -123,6 +123,9 @@ func (cc *CCEqualityStruct) createParent(e *Eqterm) bool {
 				testExist = false
 			}
 			args.Append(res.term)
+			debug(Lib.MkLazy(func() string {
+				return fmt.Sprintf("Ajout arg %v // %v ", res.term.ToString(), k.term.ToString())
+			}))
 		}
 
 		if !testExist {

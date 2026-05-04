@@ -1,4 +1,4 @@
-% checks whether the transitivity rule is validated by our equality reasoning
+% not valid
 
 fof(pel55_2_1,axiom,
     p(b) ).

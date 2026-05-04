@@ -70,7 +70,7 @@ func ApplyClosureRules(form AST.Form, state *State) (bool, Lib.List[Lib.List[Uni
 
 	f := form.Copy()
 
-	substFound, substs := searchInequalities(form)
+	substFound, substs := SearchInequalities(form)
 	if substFound {
 		result = true
 		mixed_substs := Lib.NewList[Unif.MixedSubstitution]()
@@ -154,12 +154,88 @@ func searchObviousClosureRule(f AST.Form) bool {
 	}
 }
 
+func robinsonUnify(term1, term2 AST.Term, s Unif.Substitutions) Unif.Substitutions {
+	term1 = walkSubst(term1, s)
+	term2 = walkSubst(term2, s)
+
+	if term1.Equals(term2) {
+		return s
+	}
+
+	switch t1 := term1.(type) {
+	case AST.Meta:
+		if !Unif.OccurCheckValid(t1, term2) {
+			return Unif.Failure()
+		}
+		s.Set(t1, term2)
+		Unif.EliminateMeta(&s)
+		Unif.Eliminate(&s)
+		return s
+
+	case AST.Fun:
+		switch t2 := term2.(type) {
+		case AST.Meta:
+			if !Unif.OccurCheckValid(t2, term1) {
+				return Unif.Failure()
+			}
+			s.Set(t2, term1)
+			Unif.EliminateMeta(&s)
+			Unif.Eliminate(&s)
+			return s
+
+		case AST.Fun:
+			if !t1.GetID().Equals(t2.GetID()) {
+				return Unif.Failure()
+			}
+			args1 := t1.GetArgs().GetSlice()
+			args2 := t2.GetArgs().GetSlice()
+			if len(args1) != len(args2) {
+				return Unif.Failure()
+			}
+			for i := range args1 {
+				s = robinsonUnify(args1[i].Copy(), args2[i].Copy(), s)
+				if s.Equals(Unif.Failure()) {
+					return Unif.Failure()
+				}
+			}
+			return s
+
+		default:
+			return Unif.Failure()
+		}
+
+	default:
+		// Var or any other term kind: not expected after Skolemisation.
+		return Unif.Failure()
+	}
+}
+
+// walkSubst chases meta-variable bindings in s until reaching an unbound
+// meta or a non-meta term.
+func walkSubst(t AST.Term, s Unif.Substitutions) AST.Term {
+	for t.IsMeta() {
+		val, idx := s.Get(t.ToMeta())
+		if idx == -1 {
+			break
+		}
+		t = val
+	}
+	return t
+}
+
 /* Search contradiction with inequalities (for example, !(x,a) -> subst(x, a)) */
-func searchInequalities(form AST.Form) (bool, Unif.Substitutions) {
+func SearchInequalities(form AST.Form) (bool, Unif.Substitutions) {
 	subst := Unif.MakeEmptySubstitution()
+	debug(Lib.MkLazy(func() string { return fmt.Sprintf("Coucou") }))
 
 	if formNot, isNot := form.(AST.Not); isNot {
+		debug(Lib.MkLazy(func() string { return fmt.Sprintf("IsNot: %v", isNot) }))
 		if predNeq, isPred := formNot.GetForm().(AST.Pred); isPred {
+			debug(Lib.MkLazy(func() string { return fmt.Sprintf("IsPred: %v", isPred) }))
+
+			debug(Lib.MkLazy(func() string { return fmt.Sprintf("predNeq.GetID(): %v", predNeq.GetID().ToString()) }))
+			debug(Lib.MkLazy(func() string { return fmt.Sprintf("IsPred: %v", AST.Id_eq.ToString()) }))
+			debug(Lib.MkLazy(func() string { return fmt.Sprintf("Equals? %v", predNeq.GetID().Equals(AST.Id_eq)) }))
 			if predNeq.GetID().Equals(AST.Id_eq) {
 
 				debug(
@@ -181,7 +257,7 @@ func searchInequalities(form AST.Form) (bool, Unif.Substitutions) {
 					Lib.MkLazy(func() string { return fmt.Sprintf("Arg 2 : %v", arg_2.ToString()) }),
 				)
 
-				subst = Unif.AddUnification(arg_1, arg_2, subst)
+				subst = robinsonUnify(arg_1, arg_2, subst)
 				debug(
 					Lib.MkLazy(func() string { return fmt.Sprintf("Subst : %v", subst.ToString()) }),
 				)
