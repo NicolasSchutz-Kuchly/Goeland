@@ -1,3 +1,5 @@
+%valid
+
 fof(pel55_3,axiom, ! [X] : ( X = a  | X = b  ) ).
 
 fof(pel55_1,axiom,(hates(b,a) )).

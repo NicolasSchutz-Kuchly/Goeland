@@ -439,7 +439,7 @@ func TestConstraints2(t *testing.T) {
 func TestConstraints3(t *testing.T) {
 	/* Consistent and relevant */
 
-	tp_x_ffx := eqStruct.MakeTermPair(ffx, fx)
+	tp_x_ffx := eqStruct.MakeTermPair(a, fx)
 	constraint_fx_a := MakeConstraint(PREC, tp_x_ffx)
 	cs := makeEmptyConstraintStruct()
 	append := cs.appendIfConsistent(constraint_fx_a)

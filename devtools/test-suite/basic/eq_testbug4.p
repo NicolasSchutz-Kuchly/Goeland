@@ -1,4 +1,4 @@
-%corrige
+%corrige non valide
 
 fof(test, conjecture,
         ~ ? [X,Y] :

@@ -1,4 +1,4 @@
-%corrige
+%corrige no valid
 
 
 fof(test, conjecture,

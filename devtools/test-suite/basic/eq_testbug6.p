@@ -1,4 +1,4 @@
-
+%valid
 fof(eq, axiom,
     (! [X] :
         X = f(X,b))).

@@ -193,68 +193,83 @@ func compareFunFun(s, t AST.Fun) compareStruct {
 	debug(
 		Lib.MkLazy(func() string { return "Compare Fun Fun" }),
 	)
-
-	/* Check if s is an argument (or inferior)  of t */
-	i := 0
-	if t.GetArgs().Len() > 0 {
-		for i < t.GetArgs().Len() {
-			cs := compareLPO(s, t.GetArgs().At(i))
-			if cs.order <= 0 && cs.is_comparable {
-				return makeCompareStruct(1, true, nil, nil)
-			}
-			i++
-		}
+	if found, res := isSub(s, t); found {
+		return res
 	}
 
 	switch s.GetID().CompareWith(t.GetID()) {
 
 	case -1:
-		if found, res := caseFLessG(s, t); found {
-			return res
-		}
-	case 0:
-		if found, res := caseFEqualsG(s, t); found {
-			return res
-		}
-	}
 
-	return caseDefault(s, t)
+		return caseFLessG(s, t)
+	case 0:
+		return caseFEqualsG(s, t)
+
+	}
+	return makeCompareStruct(-1, true, nil, nil)
 }
 
-/* Case f < g */
-func caseFLessG(s, t AST.Fun) (bool, compareStruct) {
+func isSub(s, t AST.Fun) (bool, compareStruct) {
+	/* Check if s is an argument (or inferior)  of t */
+	n := t.GetArgs().Len()
 	// f < g and f has no argument
-	if s.GetArgs().Len() == 0 {
-		return true, makeCompareStruct(1, true, nil, nil)
+	if n == 0 {
+		return false, makeEmptyCompareStruct()
 	} else {
-
 		i := 0
-		for i < s.GetArgs().Len() {
-			cs := compareLPO(s.GetArgs().At(i), t)
-
+		for i < n {
+			cs := compareLPO(s, t.GetArgs().At(i))
 			if !cs.is_comparable {
-				return true, makeCompareStruct(0, false, s, t)
-			}
-			if cs.order <= 0 {
-				return true, makeCompareStruct(0, false, s, t)
+				return false, makeEmptyCompareStruct()
+			} else {
+				if cs.order >= 0 {
+					return true, makeCompareStruct(1, true, nil, nil)
+
+				}
 			}
 			i++
 		}
-		return true, makeCompareStruct(1, true, nil, nil)
+		return false, makeEmptyCompareStruct()
+	}
+
+}
+
+/* Case f < g */
+func caseFLessG(s, t AST.Fun) compareStruct {
+
+	n := s.GetArgs().Len()
+	// f < g and f has no argument
+	if n == 0 {
+		return makeCompareStruct(1, true, nil, nil)
+	} else {
+
+		i := 0
+		for i < n {
+			cs := compareLPO(s.GetArgs().At(i), t)
+
+			if !cs.is_comparable {
+				return makeCompareStruct(0, false, s, t)
+			}
+			if cs.order <= 0 {
+				return makeCompareStruct(-1, true, nil, nil)
+			}
+			i++
+		}
+		return makeCompareStruct(1, true, nil, nil)
 	}
 }
 
 /* Case f == g */
-func caseFEqualsG(s, t AST.Fun) (bool, compareStruct) {
+func caseFEqualsG(s, t AST.Fun) compareStruct {
 	debug(
 		Lib.MkLazy(func() string { return "Case F = G" }),
 	)
-	if s.GetArgs().Len() != t.GetArgs().Len() {
+	n := s.GetArgs().Len()
+	if n != t.GetArgs().Len() {
 		Glob.Fatal("F=G", fmt.Sprintf("Error : %v and %v don't have the same number of arguments", s.GetID().ToString(), t.GetID().ToString()))
-		return true, makeCompareStruct(0, false, nil, nil)
+		return makeCompareStruct(0, false, nil, nil)
 	}
 
-	n := s.GetArgs().Len()
 	i := 0
 	stopped := false
 	val_res := 0
@@ -273,7 +288,7 @@ func caseFEqualsG(s, t AST.Fun) (bool, compareStruct) {
 					)
 				}),
 			)
-			return true, makeCompareStruct(0, false, cs.new_t1, cs.new_t2)
+			return makeCompareStruct(0, false, cs.new_t1, cs.new_t2)
 		}
 		if cs.order != 0 {
 			stopped = true
@@ -283,7 +298,7 @@ func caseFEqualsG(s, t AST.Fun) (bool, compareStruct) {
 	}
 
 	if !stopped {
-		return true, makeCompareStruct(0, true, nil, nil)
+		return makeCompareStruct(0, true, nil, nil)
 	}
 
 	// Check and second loop : while <= t
@@ -291,20 +306,14 @@ func caseFEqualsG(s, t AST.Fun) (bool, compareStruct) {
 		for i < n {
 			cs := compareLPO(s.GetArgs().At(i), t)
 			if !cs.is_comparable {
-				return true, makeCompareStruct(0, false, s, t)
+				return makeCompareStruct(0, false, s, t)
 			}
-			if cs.order != 1 {
-				return true, makeCompareStruct(0, false, s, t)
+			if cs.order == -1 {
+				return makeCompareStruct(-1, true, nil, nil)
 			}
 			i++
 		}
 	}
-	return true, makeCompareStruct(val_res, true, nil, nil)
+	return makeCompareStruct(val_res, true, nil, nil)
 
-}
-
-/* Default case */
-func caseDefault(s, t AST.Fun) compareStruct {
-
-	return makeCompareStruct(-1, true, nil, nil)
 }

@@ -1,3 +1,5 @@
+%not valid
+
 fof(ax16,axiom,
      a != b).
 
