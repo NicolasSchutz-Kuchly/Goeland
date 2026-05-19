@@ -184,7 +184,7 @@ func compareMetaMeta(m1, m2 AST.Meta) compareStruct {
 	if m1.Equals(m2) {
 		return makeCompareStruct(0, true, nil, nil)
 	} else {
-		return makeCompareStruct(1, false, m1, m2)
+		return makeCompareStruct(0, false, m1, m2)
 	}
 }
 
@@ -194,7 +194,20 @@ func compareFunFun(s, t AST.Fun) compareStruct {
 		Lib.MkLazy(func() string { return "Compare Fun Fun" }),
 	)
 
+	/* Check if s is an argument (or inferior)  of t */
+	i := 0
+	if t.GetArgs().Len() > 0 {
+		for i < t.GetArgs().Len() {
+			cs := compareLPO(s, t.GetArgs().At(i))
+			if cs.order <= 0 && cs.is_comparable {
+				return makeCompareStruct(1, true, nil, nil)
+			}
+			i++
+		}
+	}
+
 	switch s.GetID().CompareWith(t.GetID()) {
+
 	case -1:
 		if found, res := caseFLessG(s, t); found {
 			return res
@@ -214,24 +227,21 @@ func caseFLessG(s, t AST.Fun) (bool, compareStruct) {
 	if s.GetArgs().Len() == 0 {
 		return true, makeCompareStruct(1, true, nil, nil)
 	} else {
+
 		i := 0
-		stopped := false
-		for i < s.GetArgs().Len() && !stopped {
+		for i < s.GetArgs().Len() {
 			cs := compareLPO(s.GetArgs().At(i), t)
 
 			if !cs.is_comparable {
 				return true, makeCompareStruct(0, false, s, t)
 			}
 			if cs.order <= 0 {
-				stopped = true
+				return true, makeCompareStruct(0, false, s, t)
 			}
 			i++
 		}
-		if !stopped {
-			return true, makeCompareStruct(1, true, nil, nil)
-		}
+		return true, makeCompareStruct(1, true, nil, nil)
 	}
-	return false, makeEmptyCompareStruct()
 }
 
 /* Case f == g */
@@ -277,50 +287,24 @@ func caseFEqualsG(s, t AST.Fun) (bool, compareStruct) {
 	}
 
 	// Check and second loop : while <= t
-	stopped = false
-	if val_res > 0 {
-		for i < n && !stopped {
+	if val_res == 1 {
+		for i < n {
 			cs := compareLPO(s.GetArgs().At(i), t)
 			if !cs.is_comparable {
 				return true, makeCompareStruct(0, false, s, t)
 			}
-			if cs.order <= 0 {
-				stopped = true
+			if cs.order != 1 {
+				return true, makeCompareStruct(0, false, s, t)
 			}
 			i++
 		}
-		if !stopped {
-			return true, makeCompareStruct(1, true, nil, nil)
-		}
 	}
-	return false, makeEmptyCompareStruct()
+	return true, makeCompareStruct(val_res, true, nil, nil)
+
 }
 
 /* Default case */
 func caseDefault(s, t AST.Fun) compareStruct {
-	// Occurences inside
-	m := t.GetArgs().Len()
-	i := 0
-	stopped := false
-	for i < m && !stopped {
-		cs := compareLPO(s, t.GetArgs().At(i))
-		if !cs.is_comparable {
-			return makeCompareStruct(0, false, s, t)
-		}
-		if cs.order >= 0 {
-			stopped = true
-		}
-		i++
-	}
-	if stopped {
-		return makeCompareStruct(1, true, nil, nil)
-	}
-
-	// s > t is only decidable when s is ground; if s contains metavariables
-	// the ordering cannot be determined yet — defer to the constraint list.
-	if !s.GetMetas().IsEmpty() {
-		return makeCompareStruct(0, false, s, t)
-	}
 
 	return makeCompareStruct(-1, true, nil, nil)
 }

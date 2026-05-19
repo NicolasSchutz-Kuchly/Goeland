@@ -80,10 +80,13 @@ func applyLeftRule(rs ruleStruct, ep EqualityProblem, father_chan chan answerEP,
 		if rs.getIsSModified() {
 			new_eq_list[rs.getIndexEQList()] = eqStruct.MakeTermPair(new_term.Copy(), rs.getT())
 		} else {
-			new_eq_list[rs.getIndexEQList()] = eqStruct.MakeTermPair(rs.getS(), new_term.Copy())
+			new_eq_list[rs.getIndexEQList()] = eqStruct.MakeTermPair(rs.getT(), new_term.Copy())
 		}
 		debug(
 			Lib.MkLazy(func() string { return fmt.Sprintf("New EQ list : %v", new_eq_list.ToString()) }),
+		)
+		debug(
+			Lib.MkLazy(func() string { return fmt.Sprintf("EP before new EQ : %v", ep.ToString()) }),
 		)
 		tryEqualityReasoningProblem(makeEqualityProblem(new_eq_list, ep.GetS(), ep.GetT(), new_cl), father_chan, rs.getIndexEQList(), LEFT, father_id)
 	} else {
@@ -110,7 +113,7 @@ func applyRightRule(rs ruleStruct, ep EqualityProblem, father_chan chan answerEP
 		if rs.getIsSModified() {
 			tryEqualityReasoningProblem(makeEqualityProblem(ep.copy().GetE(), new_term.Copy(), rs.getT(), new_cl), father_chan, rs.getIndexEQList(), RIGHT, father_id)
 		} else {
-			tryEqualityReasoningProblem(makeEqualityProblem(ep.copy().GetE(), rs.getS(), new_term.Copy(), new_cl), father_chan, rs.getIndexEQList(), RIGHT, father_id)
+			tryEqualityReasoningProblem(makeEqualityProblem(ep.copy().GetE(), rs.getT(), new_term.Copy(), new_cl), father_chan, rs.getIndexEQList(), RIGHT, father_id)
 		}
 	} else {
 		debug(
@@ -153,5 +156,6 @@ func applyEQRule(l, r, sub_term_of_s, s, t AST.Term, cs ConstraintStruct) (bool,
 	if !constraints_list.appendIfConsistent(MakeConstraint(EQ, eqStruct.MakeTermPair(l, sub_term_of_s))) {
 		return false, nil, makeEmptyConstraintStruct()
 	}
+
 	return true, new_s, constraints_list
 }

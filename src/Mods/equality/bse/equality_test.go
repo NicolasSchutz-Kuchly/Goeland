@@ -439,14 +439,13 @@ func TestConstraints2(t *testing.T) {
 func TestConstraints3(t *testing.T) {
 	/* Consistent and relevant */
 
-	tp_fx_a := eqStruct.MakeTermPair(fx, a)
-	constraint_fx_a := MakeConstraint(PREC, tp_fx_a)
+	tp_x_ffx := eqStruct.MakeTermPair(ffx, fx)
+	constraint_fx_a := MakeConstraint(PREC, tp_x_ffx)
 	cs := makeEmptyConstraintStruct()
-
 	append := cs.appendIfConsistent(constraint_fx_a)
-	if !append || len(cs.getPrec()) != 1 || !cs.getPrec()[0].equals(constraint_fx_a) {
-		t.Fatalf("Error: %v and %v is not the expected PREC list. Expected consistent and %v", append, cs.getPrec().toString(), constraint_fx_a.toString())
-	}
+
+	t.Fatalf("Error:%v / %v / %v ", append, cs.getPrec().toString(), constraint_fx_a.toString())
+
 }
 
 func TestConstraints4(t *testing.T) {

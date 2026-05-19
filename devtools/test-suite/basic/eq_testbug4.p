@@ -1,5 +1,6 @@
-
+%corrige
 
 fof(test, conjecture,
-        ? [X,Y] :
-        ( X != Y)).
+        ~ ? [X,Y] :
+        (Y = a &
+        X != Y)).

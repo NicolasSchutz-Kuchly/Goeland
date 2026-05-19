@@ -1,4 +1,3 @@
-%NOT VALID
 
 %VALID
 

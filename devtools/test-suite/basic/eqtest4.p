@@ -1,9 +1,8 @@
 %NOT VALID
 
 
-fof(eq_a_ba, axiom,
-    (! [X] :
-        X = a)).
+fof(eq_a_bb, axiom,
+   f(a) = a).
 
 fof(eq_a_bb, axiom,
    g(a) = c).
