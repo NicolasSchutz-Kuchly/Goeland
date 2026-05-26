@@ -454,7 +454,7 @@ func TestConstraints4(t *testing.T) {
 	* On accepte les cas comme f(f(x)) < a et a < f(x)
 	 */
 
-	tp_fx_a := eqStruct.MakeTermPair(fx, a)
+	tp_fx_a := eqStruct.MakeTermPair(x, a)
 	constraint_fx_a := MakeConstraint(PREC, tp_fx_a)
 	cs := makeEmptyConstraintStruct()
 
@@ -463,7 +463,7 @@ func TestConstraints4(t *testing.T) {
 		t.Fatalf("Error: %v and %v is not the expected PREC list. Expected consistent and %v", res_constraint_1, cs.getPrec().toString(), constraint_fx_a.toString())
 	}
 
-	tp_a_fx := eqStruct.MakeTermPair(a, fx)
+	tp_a_fx := eqStruct.MakeTermPair(a, x)
 	constraint_a_fx := MakeConstraint(PREC, tp_a_fx)
 	res_constraint_2 := cs.appendIfConsistent(constraint_a_fx)
 	if res_constraint_2 || len(cs.getPrec()) != 1 || !cs.getPrec()[0].equals(constraint_fx_a) {
@@ -540,13 +540,12 @@ func TestConstaintes9(t *testing.T) {
 	/* consistent, should return X,a and Y, b */
 	tp_gga_ggx := eqStruct.MakeTermPair(gga, ggx)
 	constraint_gga_ggx := MakeConstraint(PREC, tp_gga_ggx)
-	// append :=
-	cs.appendIfConsistent(constraint_gga_ggx)
-	/*
-		if !append || len(cs.getPrec()) > 0 {
-			t.Fatalf("Error: %v and %v is not the expected PREC list. Expected consistent and empty PREC list", append, cs.getPrec().toString())
-		}
-	*/
+	append := cs.appendIfConsistent(constraint_gga_ggx)
+
+	if !append || cs.getPrec().Len() > 0 {
+		t.Fatalf("Error: %v and %v is not the expected PREC list. Expected consistent and empty PREC list", append, cs.getPrec().toString())
+	}
+
 }
 
 // ---------------------------------------------------------------------------

@@ -6,4 +6,4 @@ fof(pel55_1,axiom,(hates(b,a) )).
 fof(pel55_1,axiom,(hates(b,b) )).
 
 fof(pel55_10,conjecture,
-    ~(! [Z] : ? [Y] : ~ hates(b,Y)) ).
+    ~(? [Y] : ~ hates(b,Y)) ).

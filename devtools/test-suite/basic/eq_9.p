@@ -5,8 +5,8 @@ fof(eq_a_b, axiom,
 
 
 fof(eq_a_b, axiom,
-   p(f(a,c))).
+   p(f(c,a))).
 
 fof(eq_a_b, conjecture,
-   p(f(b,c))).
+   p(f(c,b))).
 

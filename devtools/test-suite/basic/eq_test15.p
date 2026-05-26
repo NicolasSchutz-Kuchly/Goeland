@@ -1,3 +1,5 @@
+%not valid
+
 fof(pel55_3,axiom, ! [X] : ( X = a   ) ).
 
 fof(pel55_1,axiom,(hates(a,a) )).
