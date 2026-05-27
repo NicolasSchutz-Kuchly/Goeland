@@ -380,11 +380,11 @@ func (ds *destructiveSearch) ProofSearch(father_id uint64, st State, cha Communi
 		}
 
 		// Equality
-		if EagerEq || (len(st.GetAlpha()) == 0 && len(st.GetDelta()) == 0 && len(st.GetBeta()) == 0) {
-			if TryEquality(atomics_dmt, st, step_atomics, father_id, cha, node_id, original_node_id) {
-				return
-			}
+		//if EagerEq || (len(st.GetAlpha()) == 0 && len(st.GetDelta()) == 0 && len(st.GetBeta()) == 0) {
+		if TryEquality(atomics_dmt, st, step_atomics, father_id, cha, node_id, original_node_id) {
+			return
 		}
+		//}
 
 		debug(Lib.MkLazy(func() string { return "Tree Pos after insert:" }))
 		st.GetTreePos().Print()

@@ -67,6 +67,7 @@ type State struct {
 	forbidden                             Lib.List[Lib.List[Unif.MixedSubstitution]]
 	unifier                               Core.Unifier
 	eqStruct                              eqStruct.EqualityStruct
+	ccEqStruct                            eqStruct.CCEqualityStruct
 }
 
 /***********/
@@ -143,6 +144,10 @@ func (s State) GetGlobUnifier() Core.Unifier {
 
 func (s State) GetEqStruct() eqStruct.EqualityStruct {
 	return s.eqStruct.Copy()
+}
+
+func (s State) GetccEqStruct() eqStruct.CCEqualityStruct {
+	return s.ccEqStruct
 }
 
 /* Setters */
@@ -287,7 +292,8 @@ func MakeState(limit int, tp, tn Unif.DataStructure, f AST.Form) State {
 		false,
 		Lib.NewList[Lib.List[Unif.MixedSubstitution]](),
 		Core.MakeUnifier(),
-		eqStruct.NewEqStruct()}
+		eqStruct.NewEqStruct(),
+		eqStruct.NewCCEqualityStruct()}
 }
 
 /* Print a state */
@@ -403,8 +409,10 @@ func (st State) Copy() State {
 
 	if Glob.IncrEq {
 		new_state.eqStruct = st.GetEqStruct()
+		new_state.ccEqStruct = st.GetccEqStruct()
 	} else {
 		new_state.eqStruct = eqStruct.NewEqStruct()
+		new_state.ccEqStruct = st.GetccEqStruct()
 	}
 
 	if Glob.IsDestructive() {

@@ -34,7 +34,7 @@
 * This file implements the main logic behind the equality plugin.
 **/
 
-package cc
+package eqStruct
 
 import (
 	"fmt"
@@ -48,7 +48,11 @@ type CCEqualityStruct struct {
 	classes map[int][]*Eqterm
 }
 
-func newCCEqualityStruct() CCEqualityStruct {
+func (cc *CCEqualityStruct) Classes() map[int][]*Eqterm {
+	return cc.classes
+}
+
+func NewCCEqualityStruct() CCEqualityStruct {
 	return CCEqualityStruct{classes: make(map[int][]*Eqterm)}
 }
 
@@ -58,13 +62,12 @@ add its args in the cc struct too
 if the term is already in the CCstruct do nothing
 */
 func (cc *CCEqualityStruct) AddTerm(t AST.Term) (*Eqterm, int) {
-	if contain := cc.retrieveEqTerm(t); contain != nil {
+	if contain := cc.RetrieveEqTerm(t); contain != nil {
 		return contain, contain.len
 	}
 
 	e := NewEqTerm(&t)
-	debug(Lib.MkLazy(func() string { return fmt.Sprintf("Add %v in CCstruct", t.ToString()) }))
-	e.setParent(e)
+	e.SetParent(e)
 	lenmax := 1
 	lenmaj := 1
 
@@ -77,7 +80,7 @@ func (cc *CCEqualityStruct) AddTerm(t AST.Term) (*Eqterm, int) {
 		lenmax = max(lenmax, lenmaj)
 	}
 
-	e.setLen(lenmax)
+	e.SetLen(lenmax)
 	index := e.term.GetIndex()
 	cc.classes[index] = append(cc.classes[index], e)
 	return e, lenmax
@@ -99,10 +102,54 @@ func (cc CCEqualityStruct) ToString() string {
 	return b.String()
 }
 
+func (t *Eqterm) Copy() *Eqterm {
+	return &Eqterm{
+		term:   t.term,
+		len:    t.len,
+		parent: t.parent,
+		use:    make(map[int]*Eqterm),
+	}
+}
+
+func (cc *CCEqualityStruct) Copy() CCEqualityStruct {
+	newcc := NewCCEqualityStruct()
+
+	for index, listTerm := range cc.classes {
+
+		for _, term := range listTerm {
+			newterm := newcc.RetrieveTerm(term)
+			if newterm == nil {
+				newterm = term.Copy()
+				newcc.classes[index] = append(newcc.classes[index], newterm)
+			}
+			newparent := newcc.RetrieveTerm(term.parent)
+			if newparent == nil {
+				newparent = term.parent.Copy()
+				ind := newparent.term.GetIndex()
+				newcc.classes[ind] = append(newcc.classes[ind], newparent)
+			}
+			newterm.SetParent(newparent)
+
+			for indexarg, arg := range term.use {
+				newarg := newcc.RetrieveTerm(arg)
+				if newarg == nil {
+					newarg = arg.Copy()
+					ind := newarg.term.GetIndex()
+					newcc.classes[ind] = append(newcc.classes[ind], newarg)
+				}
+				newterm.use[indexarg] = newarg
+			}
+
+		}
+	}
+
+	return newcc
+}
+
 /*
 return the eqterm corresponding to the astterm , if it's not in the ccstruct , return nil
 */
-func (cc *CCEqualityStruct) retrieveEqTerm(term AST.Term) *Eqterm {
+func (cc *CCEqualityStruct) RetrieveEqTerm(term AST.Term) *Eqterm {
 	for _, e := range cc.classes[term.GetIndex()] {
 		if e.term.Equals(term) {
 			return e
@@ -111,13 +158,13 @@ func (cc *CCEqualityStruct) retrieveEqTerm(term AST.Term) *Eqterm {
 	return nil
 }
 
-func (cc *CCEqualityStruct) isInStruct(eqterm *Eqterm) bool {
-	for _, e := range cc.classes[eqterm.term.GetIndex()] {
-		if e.Equals(eqterm) {
-			return true
+func (cc *CCEqualityStruct) RetrieveTerm(term *Eqterm) *Eqterm {
+	for _, e := range cc.classes[term.term.GetIndex()] {
+		if e.Equals(term) {
+			return e
 		}
 	}
-	return false
+	return nil
 }
 
 /*
@@ -125,7 +172,7 @@ Normalize the parents : if a parent is f(a,b) try to replace a and b by their re
 and create a new parent f(a,a) for example
 return a bool to see if the ccstruct is stable or not
 */
-func (cc *CCEqualityStruct) createParent(e *Eqterm) bool {
+func (cc *CCEqualityStruct) CreateParent(e *Eqterm) bool {
 	testExist := true
 	switch fun := e.term.(type) {
 
@@ -133,23 +180,17 @@ func (cc *CCEqualityStruct) createParent(e *Eqterm) bool {
 		args := Lib.List[AST.Term]{}
 
 		for _, k := range e.use {
-			res := find(k)
+			res := Find(k)
 			if !res.Equals(k) {
 				testExist = false
 			}
 			args.Append(res.term)
-			debug(Lib.MkLazy(func() string {
-				return fmt.Sprintf("Replace arg %v with %v in %v", k.term.ToString(), res.term.ToString(), e.term.ToString())
-			}))
 		}
 
 		if !testExist {
 			newparent := AST.MakeFun(fun.GetP(), Lib.ListCpy(fun.GetTyArgs()), args, fun.GetMetas())
 			l, _ := cc.AddTerm(newparent)
-			find(e).setParent(find(l))
-			debug(Lib.MkLazy(func() string {
-				return fmt.Sprintf("Ajout parent normalisé %v ", newparent.ToString())
-			}))
+			Find(e).SetParent(Find(l))
 		}
 	default:
 	}
@@ -164,8 +205,8 @@ func (cc *CCEqualityStruct) UpdateParent() bool {
 	loop := false
 	for _, f := range cc.classes {
 		for _, e := range f {
-			if e.isParent() && e.len != 0 {
-				loop = cc.createParent(e) || loop
+			if e.IsParent() && e.len != 0 {
+				loop = cc.CreateParent(e) || loop
 			}
 		}
 	}
@@ -176,24 +217,24 @@ func (cc *CCEqualityStruct) UpdateParent() bool {
 return the parent of an eqterm , compress the path too (each term must be directed connected to their
 representative)
 */
-func find(e *Eqterm) *Eqterm {
+func Find(e *Eqterm) *Eqterm {
 
-	if e.isParent() {
+	if e.IsParent() {
 		return e
 	}
-	e.parent = find(e.parent)
+	e.parent = Find(e.parent)
 	return e.parent
 }
 
 /*
 take 2 term and fuse their eqclass , take the best reprensative between the 2 possibles
 */
-func (cc *CCEqualityStruct) union(term *Eqterm, term2 *Eqterm) {
+func (cc *CCEqualityStruct) Union(term *Eqterm, term2 *Eqterm) {
 
 	x := term
 	y := term2
-	px := find(x)
-	py := find(y)
+	px := Find(x)
+	py := Find(y)
 
 	/*
 		pour le choix du parent regarde le nombre d'arguments puis la profondeur
@@ -204,28 +245,17 @@ func (cc *CCEqualityStruct) union(term *Eqterm, term2 *Eqterm) {
 		} else if px.len > py.len && len(px.use) == len(py.use) {
 			px, py = py, px
 		}
-		py.setParent(px)
-		debug(Lib.MkLazy(func() string {
-			return fmt.Sprintf("Union %v and %v , new parent : %v", term.term.ToString(), term2.term.ToString(), py.parent.term.ToString())
-		}))
+		py.SetParent(px)
 
 	}
 }
 
-func (t *Eqterm) Copy() *Eqterm {
-	return &Eqterm{
-		term: t.term,
-		len:  t.len,
-		use:  make(map[int]*Eqterm),
-	}
+func (cc *CCEqualityStruct) TestSameparent(term1 *Eqterm, term2 *Eqterm) bool {
+
+	return Find(term1).Equals(Find(term2))
 }
 
-func (cc *CCEqualityStruct) testSameparent(term1 *Eqterm, term2 *Eqterm) bool {
-
-	return find(term1).Equals(find(term2))
-}
-
-func (cc *CCEqualityStruct) congruence() bool {
+func (cc *CCEqualityStruct) Congruence() bool {
 	res := false
 	for _, termlist := range cc.classes {
 		if len(termlist) < 2 {
@@ -237,14 +267,11 @@ func (cc *CCEqualityStruct) congruence() bool {
 			}
 			for j := i + 1; j < len(termlist); j++ {
 				e2 := termlist[j]
-				pe2 := find(e2)
-				pe := find(e)
+				pe2 := Find(e2)
+				pe := Find(e)
 				if !pe.Equals(pe2) {
-					if equalMaps(e2.use, e.use) {
-						cc.union(e, e2)
-						debug(Lib.MkLazy(func() string {
-							return fmt.Sprintf("Ajout union congruence : %v = %v (Parent : %v)", e.term.ToString(), e2.term.ToString(), pe.term.ToString())
-						}))
+					if EqualMaps(e2.use, e.use) {
+						cc.Union(e, e2)
 						res = true
 					}
 				}
@@ -261,20 +288,20 @@ type Eqterm struct {
 	use    map[int]*Eqterm
 }
 
-func (t *Eqterm) setParent(p *Eqterm) {
+func (t *Eqterm) SetParent(p *Eqterm) {
 	t.parent = p
 }
 
-func (t *Eqterm) isParent() bool {
+func (t *Eqterm) IsParent() bool {
 	return t.Equals(t.parent)
 }
 
-func (t *Eqterm) setLen(p int) {
+func (t *Eqterm) SetLen(p int) {
 	t.len = p
 }
 
 func (t *Eqterm) ToString() string {
-	str := fmt.Sprintf("	%v (Representative: %s )", t.term.ToString(), find(t).term.ToString())
+	str := fmt.Sprintf("	%v (Representative: %s )", t.term.ToString(), Find(t).term.ToString())
 	return str
 }
 
@@ -284,16 +311,20 @@ func NewEqTerm(term *AST.Term) *Eqterm {
 	}
 }
 
+func (t *Eqterm) Getterm() AST.Term {
+	return t.term
+}
+
 /*
 test if parent map1[i] = parent map2[i] for i in len map1
 */
-func equalMaps(a, b map[int]*Eqterm) bool {
+func EqualMaps(a, b map[int]*Eqterm) bool {
 	if len(a) != len(b) {
 		return false
 	}
 
 	for i, v := range a {
-		if !find(v).Equals(find(b[i])) {
+		if !Find(v).Equals(Find(b[i])) {
 			return false
 		}
 	}

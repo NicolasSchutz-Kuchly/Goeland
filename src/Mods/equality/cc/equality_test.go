@@ -45,6 +45,7 @@ import (
 	"github.com/GoelandProver/Goeland/AST"
 	"github.com/GoelandProver/Goeland/Glob"
 	"github.com/GoelandProver/Goeland/Lib"
+	"github.com/GoelandProver/Goeland/Mods/equality/eqStruct"
 	"github.com/GoelandProver/Goeland/Typing"
 	"github.com/GoelandProver/Goeland/Unif"
 )
@@ -401,42 +402,42 @@ func TestMain(m *testing.M) {
 /*Test Add */
 
 func TestAddConst(t *testing.T) {
-	CCstruct := newCCEqualityStruct()
+	CCstruct := eqStruct.NewCCEqualityStruct()
 
 	CCstruct.AddTerm(a)
 
-	got := CCstruct.retrieveEqTerm(a)
+	got := CCstruct.RetrieveEqTerm(a)
 	if got == nil {
 		t.Errorf("add const didn't work , got nil instead of %v", a.ToString())
 	}
 }
 func TestAddFun(t *testing.T) {
-	CCstruct := newCCEqualityStruct()
+	CCstruct := eqStruct.NewCCEqualityStruct()
 
 	CCstruct.AddTerm(fa)
 
-	got := CCstruct.retrieveEqTerm(fa)
+	got := CCstruct.RetrieveEqTerm(fa)
 	if got == nil {
 		t.Errorf("add fun didn't work , got nil instead of %v", fa.ToString())
 	}
 }
 
 func TestAddMeta(t *testing.T) {
-	CCstruct := newCCEqualityStruct()
+	CCstruct := eqStruct.NewCCEqualityStruct()
 
 	CCstruct.AddTerm(x)
 
-	got := CCstruct.retrieveEqTerm(x)
+	got := CCstruct.RetrieveEqTerm(x)
 	if got == nil {
 		t.Errorf("add meta didn't work , got nil instead of %v", x.ToString())
 	}
 }
 func TestAddFunwithMeta(t *testing.T) {
-	CCstruct := newCCEqualityStruct()
+	CCstruct := eqStruct.NewCCEqualityStruct()
 
 	CCstruct.AddTerm(fx)
 
-	got := CCstruct.retrieveEqTerm(fx)
+	got := CCstruct.RetrieveEqTerm(fx)
 	if got == nil {
 		t.Errorf("add fun with meta didn't work , got nil instead of %v", fx.ToString())
 	}
@@ -444,31 +445,31 @@ func TestAddFunwithMeta(t *testing.T) {
 
 func TestAddFunArgs(t *testing.T) {
 	/* adding a function must add all it's substerms */
-	CCstruct := newCCEqualityStruct()
+	CCstruct := eqStruct.NewCCEqualityStruct()
 
 	CCstruct.AddTerm(gfa)
 
-	if len(CCstruct.classes) != 3 {
+	if len(CCstruct.Classes()) != 3 {
 		t.Errorf("CCstruct must contain 3 classes")
 	}
 }
 
 func TestAddExisting(t *testing.T) {
 	/* adding an existing term must do nothing */
-	CCstruct := newCCEqualityStruct()
+	CCstruct := eqStruct.NewCCEqualityStruct()
 
 	CCstruct.AddTerm(a)
 	CCstruct.AddTerm(fa)
 	CCstruct.AddTerm(x)
 	CCstruct.AddTerm(fx)
 
-	lenbefore := len(CCstruct.classes)
+	lenbefore := len(CCstruct.Classes())
 
 	CCstruct.AddTerm(a)
 	CCstruct.AddTerm(fa)
 	CCstruct.AddTerm(x)
 	CCstruct.AddTerm(fx)
-	lenafter := len(CCstruct.classes)
+	lenafter := len(CCstruct.Classes())
 
 	if lenbefore != lenafter {
 		t.Errorf("add to many things in Ccstruct len expected : %v ; got : %v", lenafter, lenbefore)
@@ -479,11 +480,11 @@ func TestAddExisting(t *testing.T) {
 
 func TestRetrieveNil(t *testing.T) {
 	/* retrieving non existant term */
-	CCstruct := newCCEqualityStruct()
+	CCstruct := eqStruct.NewCCEqualityStruct()
 
 	CCstruct.AddTerm(a)
 
-	got := CCstruct.retrieveEqTerm(b)
+	got := CCstruct.RetrieveEqTerm(b)
 	if got != nil {
 		t.Errorf("retrieve must be nil instead of returning a eqterm")
 	}
@@ -493,20 +494,20 @@ func TestRetrieveNil(t *testing.T) {
 
 func TestSimpleUnion(t *testing.T) {
 	/* union 2 simple eqterm */
-	CCstruct := newCCEqualityStruct()
+	CCstruct := eqStruct.NewCCEqualityStruct()
 
 	eq1, _ := CCstruct.AddTerm(a)
 	eq2, _ := CCstruct.AddTerm(b)
 
-	CCstruct.union(eq1, eq2)
-	if !CCstruct.testSameparent(eq1, eq2) {
-		t.Errorf("%v and %v must be equals", find(eq1).ToString(), find(eq2).ToString())
+	CCstruct.Union(eq1, eq2)
+	if !CCstruct.TestSameparent(eq1, eq2) {
+		t.Errorf("%v and %v must be equals", eqStruct.Find(eq1).ToString(), eqStruct.Find(eq2).ToString())
 	}
 }
 
 func TestUnionRecurs(t *testing.T) {
 	/* union of 2 eqstruct with 2 terms */
-	CCstruct := newCCEqualityStruct()
+	CCstruct := eqStruct.NewCCEqualityStruct()
 
 	eq1, _ := CCstruct.AddTerm(a)
 	eq2, _ := CCstruct.AddTerm(b)
@@ -514,50 +515,50 @@ func TestUnionRecurs(t *testing.T) {
 	eq3, _ := CCstruct.AddTerm(fb)
 	eq4, _ := CCstruct.AddTerm(fa)
 
-	CCstruct.union(eq1, eq3)
-	CCstruct.union(eq2, eq4)
-	CCstruct.union(eq1, eq2)
+	CCstruct.Union(eq1, eq3)
+	CCstruct.Union(eq2, eq4)
+	CCstruct.Union(eq1, eq2)
 
-	if find(eq3) != find(eq4) {
-		t.Errorf("%v and %v must be equals", find(eq3).ToString(), find(eq4).ToString())
+	if eqStruct.Find(eq3) != eqStruct.Find(eq4) {
+		t.Errorf("%v and %v must be equals", eqStruct.Find(eq3).ToString(), eqStruct.Find(eq4).ToString())
 	}
 }
 func TestUnionChain(t *testing.T) {
-	CCstruct := newCCEqualityStruct()
+	CCstruct := eqStruct.NewCCEqualityStruct()
 
 	eq1, _ := CCstruct.AddTerm(a)
 	eq2, _ := CCstruct.AddTerm(b)
 	eq3, _ := CCstruct.AddTerm(c)
 	eq4, _ := CCstruct.AddTerm(d)
 
-	CCstruct.union(eq1, eq2)
-	CCstruct.union(eq2, eq3)
-	CCstruct.union(eq3, eq4)
+	CCstruct.Union(eq1, eq2)
+	CCstruct.Union(eq2, eq3)
+	CCstruct.Union(eq3, eq4)
 
-	if !(CCstruct.testSameparent(eq1, eq4)) {
+	if !(CCstruct.TestSameparent(eq1, eq4)) {
 		t.Fatal("chain union failed")
 	}
 }
 
 func TestUnionParent(t *testing.T) {
 	/* the parent must be the smallest term */
-	CCstruct := newCCEqualityStruct()
+	CCstruct := eqStruct.NewCCEqualityStruct()
 
 	eq1, _ := CCstruct.AddTerm(a)
 	eq2, _ := CCstruct.AddTerm(fa)
 
-	CCstruct.union(eq1, eq2)
+	CCstruct.Union(eq1, eq2)
 
 	eq3, _ := CCstruct.AddTerm(fb)
 	eq4, _ := CCstruct.AddTerm(b)
 
-	CCstruct.union(eq3, eq4)
+	CCstruct.Union(eq3, eq4)
 
-	if !find(eq2).Equals(CCstruct.retrieveEqTerm(a)) {
+	if !eqStruct.Find(eq2).Equals(CCstruct.RetrieveEqTerm(a)) {
 		t.Errorf("the parent must be a and not fa")
 	}
 
-	if !find(eq3).Equals(CCstruct.retrieveEqTerm(b)) {
+	if !eqStruct.Find(eq3).Equals(CCstruct.RetrieveEqTerm(b)) {
 		t.Errorf("the parent must be b and not fb")
 	}
 }
@@ -566,20 +567,20 @@ func TestUnionParent(t *testing.T) {
 
 func TestCongruence1(t *testing.T) {
 	/* f(a) and f(b) must be in the same class if a = b */
-	CCstruct := newCCEqualityStruct()
+	CCstruct := eqStruct.NewCCEqualityStruct()
 
 	eq1, _ := CCstruct.AddTerm(a)
 	eq2, _ := CCstruct.AddTerm(b)
 
-	CCstruct.union(eq1, eq2)
+	CCstruct.Union(eq1, eq2)
 
 	eqf1, _ := CCstruct.AddTerm(fa)
 	eqf2, _ := CCstruct.AddTerm(fb)
 
-	for CCstruct.congruence() {
+	for CCstruct.Congruence() {
 	}
 
-	if !CCstruct.testSameparent(eqf1, eqf2) {
+	if !CCstruct.TestSameparent(eqf1, eqf2) {
 		t.Errorf("f(a) and f(b) must have the same parent")
 	}
 
@@ -587,23 +588,23 @@ func TestCongruence1(t *testing.T) {
 
 func TestCongruence2(t *testing.T) {
 	/* f(a , b) and f(c , d) must be in the same class if a = c , b = d */
-	CCstruct := newCCEqualityStruct()
+	CCstruct := eqStruct.NewCCEqualityStruct()
 
 	eq1, _ := CCstruct.AddTerm(a)
 	eq2, _ := CCstruct.AddTerm(b)
 	eq3, _ := CCstruct.AddTerm(c)
 	eq4, _ := CCstruct.AddTerm(d)
 
-	CCstruct.union(eq1, eq3)
-	CCstruct.union(eq2, eq4)
+	CCstruct.Union(eq1, eq3)
+	CCstruct.Union(eq2, eq4)
 
 	eqf1, _ := CCstruct.AddTerm(fab)
 	eqf2, _ := CCstruct.AddTerm(fcd)
 
-	for CCstruct.congruence() {
+	for CCstruct.Congruence() {
 	}
 
-	if !CCstruct.testSameparent(eqf1, eqf2) {
+	if !CCstruct.TestSameparent(eqf1, eqf2) {
 		t.Errorf("f(ab) and f(cd) must have the same parent")
 	}
 
@@ -611,30 +612,30 @@ func TestCongruence2(t *testing.T) {
 
 func TestCongruence3(t *testing.T) {
 
-	CCstruct := newCCEqualityStruct()
+	CCstruct := eqStruct.NewCCEqualityStruct()
 
 	eq1, _ := CCstruct.AddTerm(a)
 	eq3, _ := CCstruct.AddTerm(c)
 	eq4, _ := CCstruct.AddTerm(fab)
 	eq5, _ := CCstruct.AddTerm(fbc)
 
-	CCstruct.union(eq4, eq1)
-	CCstruct.union(eq3, eq5)
+	CCstruct.Union(eq4, eq1)
+	CCstruct.Union(eq3, eq5)
 
 	eqf1, _ := CCstruct.AddTerm(f_fab_c)
 	eqf2, _ := CCstruct.AddTerm(f_a_fbc)
 
-	for CCstruct.congruence() {
+	for CCstruct.Congruence() {
 	}
 
-	if !CCstruct.testSameparent(eqf1, eqf2) {
+	if !CCstruct.TestSameparent(eqf1, eqf2) {
 		t.Errorf("f_fab_c and f_a_fbc must have the same parent")
 	}
 
 }
 
 func TestCongruenceIndependentOfRepresentative(t *testing.T) {
-	CCstruct := newCCEqualityStruct()
+	CCstruct := eqStruct.NewCCEqualityStruct()
 
 	eq1, _ := CCstruct.AddTerm(a)
 	eq2, _ := CCstruct.AddTerm(b)
@@ -642,12 +643,12 @@ func TestCongruenceIndependentOfRepresentative(t *testing.T) {
 	eqf1, _ := CCstruct.AddTerm(fa)
 	eqf2, _ := CCstruct.AddTerm(fb)
 
-	CCstruct.union(eq1, eq2)
-	for CCstruct.congruence() {
+	CCstruct.Union(eq1, eq2)
+	for CCstruct.Congruence() {
 	}
-	res1 := CCstruct.testSameparent(eqf1, eqf2)
+	res1 := CCstruct.TestSameparent(eqf1, eqf2)
 
-	CCstruct = newCCEqualityStruct()
+	CCstruct = eqStruct.NewCCEqualityStruct()
 
 	eq1, _ = CCstruct.AddTerm(a)
 	eq2, _ = CCstruct.AddTerm(b)
@@ -655,11 +656,11 @@ func TestCongruenceIndependentOfRepresentative(t *testing.T) {
 	eqf1, _ = CCstruct.AddTerm(fa)
 	eqf2, _ = CCstruct.AddTerm(fb)
 
-	CCstruct.union(eq2, eq1)
-	for CCstruct.congruence() {
+	CCstruct.Union(eq2, eq1)
+	for CCstruct.Congruence() {
 	}
 
-	res2 := CCstruct.testSameparent(eqf1, eqf2)
+	res2 := CCstruct.TestSameparent(eqf1, eqf2)
 
 	if res1 != res2 {
 		t.Errorf("union order change the congruence")
@@ -667,7 +668,7 @@ func TestCongruenceIndependentOfRepresentative(t *testing.T) {
 }
 
 func TestNestedFunctionCongruence(t *testing.T) {
-	CCstruct := newCCEqualityStruct()
+	CCstruct := eqStruct.NewCCEqualityStruct()
 
 	e1, _ := CCstruct.AddTerm(a)
 	e2, _ := CCstruct.AddTerm(b)
@@ -675,18 +676,18 @@ func TestNestedFunctionCongruence(t *testing.T) {
 	gg1, _ := CCstruct.AddTerm(gga)
 	gg2, _ := CCstruct.AddTerm(ggb)
 
-	CCstruct.union(e1, e2)
+	CCstruct.Union(e1, e2)
 
-	for CCstruct.congruence() {
+	for CCstruct.Congruence() {
 	}
 
-	if !CCstruct.testSameparent(gg1, gg2) {
+	if !CCstruct.TestSameparent(gg1, gg2) {
 		t.Errorf("congruence imbriquée BROKEN")
 	}
 }
 
 func TestCongruenceTransitivityDeep(t *testing.T) {
-	CCstruct := newCCEqualityStruct()
+	CCstruct := eqStruct.NewCCEqualityStruct()
 
 	e1, _ := CCstruct.AddTerm(a)
 	e2, _ := CCstruct.AddTerm(b)
@@ -696,28 +697,28 @@ func TestCongruenceTransitivityDeep(t *testing.T) {
 	f2, _ := CCstruct.AddTerm(fb)
 	f3, _ := CCstruct.AddTerm(fc)
 
-	CCstruct.union(e1, e2)
-	CCstruct.union(e2, e3)
+	CCstruct.Union(e1, e2)
+	CCstruct.Union(e2, e3)
 
-	for CCstruct.congruence() {
+	for CCstruct.Congruence() {
 	}
 
-	if !(CCstruct.testSameparent(f1, f2) &&
-		CCstruct.testSameparent(f2, f3)) {
+	if !(CCstruct.TestSameparent(f1, f2) &&
+		CCstruct.TestSameparent(f2, f3)) {
 		t.Errorf("no transitivity on congruence")
 	}
 }
 
 func TestCongruenceTermination(t *testing.T) {
-	CCstruct := newCCEqualityStruct()
+	CCstruct := eqStruct.NewCCEqualityStruct()
 
 	CCstruct.AddTerm(a)
 	CCstruct.AddTerm(gga)
 
-	CCstruct.union(CCstruct.retrieveEqTerm(gga), CCstruct.retrieveEqTerm(a))
+	CCstruct.Union(CCstruct.RetrieveEqTerm(gga), CCstruct.RetrieveEqTerm(a))
 
 	for i := 0; i < 100; i++ {
-		if !CCstruct.congruence() {
+		if !CCstruct.Congruence() {
 			return
 		}
 	}
@@ -728,36 +729,36 @@ func TestCongruenceTermination(t *testing.T) {
 /* test func testsameparent */
 func TestSameParent(t *testing.T) {
 
-	CCstruct := newCCEqualityStruct()
+	CCstruct := eqStruct.NewCCEqualityStruct()
 
 	eq1, _ := CCstruct.AddTerm(a)
 	eq2, _ := CCstruct.AddTerm(b)
 	eq3, _ := CCstruct.AddTerm(c)
 
-	CCstruct.union(eq3, eq1)
-	if !CCstruct.testSameparent(eq3, eq1) {
+	CCstruct.Union(eq3, eq1)
+	if !CCstruct.TestSameparent(eq3, eq1) {
 		t.Errorf("func test same parent is broken")
 	}
 
-	CCstruct.union(eq1, eq1)
-	if !CCstruct.testSameparent(eq3, eq1) {
+	CCstruct.Union(eq1, eq1)
+	if !CCstruct.TestSameparent(eq3, eq1) {
 		t.Errorf("func test same parent is broken")
 	}
 
-	CCstruct.union(eq3, eq3)
-	if !CCstruct.testSameparent(eq3, eq1) {
+	CCstruct.Union(eq3, eq3)
+	if !CCstruct.TestSameparent(eq3, eq1) {
 		t.Errorf("func test same parent is broken")
 	}
 
-	CCstruct.union(eq3, eq2)
+	CCstruct.Union(eq3, eq2)
 
-	if !CCstruct.testSameparent(eq2, eq3) {
+	if !CCstruct.TestSameparent(eq2, eq3) {
 		t.Errorf("func test same parent is broken")
 	}
 }
 
 func TestNoFalseCongruence(t *testing.T) {
-	CCstruct := newCCEqualityStruct()
+	CCstruct := eqStruct.NewCCEqualityStruct()
 
 	CCstruct.AddTerm(a)
 	CCstruct.AddTerm(b)
@@ -765,16 +766,16 @@ func TestNoFalseCongruence(t *testing.T) {
 	eq4, _ := CCstruct.AddTerm(fa)
 	eq5, _ := CCstruct.AddTerm(fb)
 
-	for CCstruct.congruence() {
+	for CCstruct.Congruence() {
 	}
 
-	if CCstruct.testSameparent(eq4, eq5) {
+	if CCstruct.TestSameparent(eq4, eq5) {
 		t.Fatal("false positive congruence detected")
 	}
 }
 
 func TestNoFalseCongruenceArgs(t *testing.T) {
-	CCstruct := newCCEqualityStruct()
+	CCstruct := eqStruct.NewCCEqualityStruct()
 
 	eq3, _ := CCstruct.AddTerm(a)
 	eq4, _ := CCstruct.AddTerm(b)
@@ -782,12 +783,12 @@ func TestNoFalseCongruenceArgs(t *testing.T) {
 	eq1, _ := CCstruct.AddTerm(fa)
 	eq2, _ := CCstruct.AddTerm(fb)
 
-	CCstruct.union(eq1, eq2)
+	CCstruct.Union(eq1, eq2)
 
-	for CCstruct.congruence() {
+	for CCstruct.Congruence() {
 	}
 
-	if CCstruct.testSameparent(eq4, eq3) {
+	if CCstruct.TestSameparent(eq4, eq3) {
 		t.Fatal("false positive congruence detected")
 	}
 }
@@ -795,23 +796,23 @@ func TestNoFalseCongruenceArgs(t *testing.T) {
 /*update parent */
 
 func TestUpdateParent1(t *testing.T) {
-	CCstruct := newCCEqualityStruct()
+	CCstruct := eqStruct.NewCCEqualityStruct()
 	eq1, _ := CCstruct.AddTerm(a)
 	eq2, _ := CCstruct.AddTerm(b)
 	CCstruct.AddTerm(c)
 	eq5, _ := CCstruct.AddTerm(fab)
 	eq6, _ := CCstruct.AddTerm(fbc)
 
-	CCstruct.union(eq1, eq2)
+	CCstruct.Union(eq1, eq2)
 	for CCstruct.UpdateParent() {
 	}
 
 	Lib.MkLazy(func() string { return fmt.Sprintf("Expected : %v", CCstruct.ToString()) })
 
-	np1 := CCstruct.retrieveEqTerm(faa)
-	np2 := CCstruct.retrieveEqTerm(fbb)
-	np3 := CCstruct.retrieveEqTerm(fac)
-	np4 := CCstruct.retrieveEqTerm(fbc)
+	np1 := CCstruct.RetrieveEqTerm(faa)
+	np2 := CCstruct.RetrieveEqTerm(fbb)
+	np3 := CCstruct.RetrieveEqTerm(fac)
+	np4 := CCstruct.RetrieveEqTerm(fbc)
 
 	if np1 == nil && np2 == nil {
 		t.Errorf(fmt.Sprintf("the new parent is not present"))
@@ -820,19 +821,19 @@ func TestUpdateParent1(t *testing.T) {
 		t.Errorf("the new parent is not present")
 	}
 	if np1 == nil {
-		if !CCstruct.testSameparent(eq5, np2) {
+		if !CCstruct.TestSameparent(eq5, np2) {
 			t.Errorf("the parent isn't updated")
 		}
 	} else {
-		if !CCstruct.testSameparent(eq5, np1) {
+		if !CCstruct.TestSameparent(eq5, np1) {
 			t.Errorf("the parent isn't updated")
 		}
 
 		if np3 == nil {
-			if !CCstruct.testSameparent(eq6, np4) {
+			if !CCstruct.TestSameparent(eq6, np4) {
 				t.Errorf("the parent isn't updated")
 			} else {
-				if !CCstruct.testSameparent(eq6, np3) {
+				if !CCstruct.TestSameparent(eq6, np3) {
 					t.Errorf("the parent isn't updated")
 				}
 			}
@@ -842,24 +843,24 @@ func TestUpdateParent1(t *testing.T) {
 }
 
 func TestUpdateParentIdempotence(t *testing.T) {
-	CCstruct := newCCEqualityStruct()
+	CCstruct := eqStruct.NewCCEqualityStruct()
 
 	eq1, _ := CCstruct.AddTerm(a)
 	eq2, _ := CCstruct.AddTerm(b)
 
-	CCstruct.union(eq1, eq2)
+	CCstruct.Union(eq1, eq2)
 
-	for CCstruct.congruence() {
+	for CCstruct.Congruence() {
 	}
 	for CCstruct.UpdateParent() {
 	}
 
-	size1 := len(CCstruct.classes)
+	size1 := len(CCstruct.Classes())
 
 	for CCstruct.UpdateParent() {
 	}
 
-	size2 := len(CCstruct.classes)
+	size2 := len(CCstruct.Classes())
 
 	if size1 != size2 {
 		t.Errorf("UpdateParent adding useless terms")
@@ -867,7 +868,7 @@ func TestUpdateParentIdempotence(t *testing.T) {
 }
 
 func TestFullPipelineConsistency(t *testing.T) {
-	CCstruct := newCCEqualityStruct()
+	CCstruct := eqStruct.NewCCEqualityStruct()
 
 	e1, _ := CCstruct.AddTerm(a)
 	e2, _ := CCstruct.AddTerm(b)
@@ -876,17 +877,40 @@ func TestFullPipelineConsistency(t *testing.T) {
 	f1, _ := CCstruct.AddTerm(fc)
 	f2, _ := CCstruct.AddTerm(fb)
 
-	CCstruct.union(e1, e2)
-	CCstruct.union(e2, e3)
+	CCstruct.Union(e1, e2)
+	CCstruct.Union(e2, e3)
 
-	for CCstruct.congruence() {
+	for CCstruct.Congruence() {
 	}
 	for CCstruct.UpdateParent() {
 	}
 
-	if !CCstruct.testSameparent(f1, f2) {
+	if !CCstruct.TestSameparent(f1, f2) {
 		t.Errorf("pipeline cassé (union + congruence + update)")
 	}
 }
 
-/* test equality */
+func TestCopy1(t *testing.T) {
+	/* union 2 simple eqterm */
+	CCstruct := eqStruct.NewCCEqualityStruct()
+
+	eq1, _ := CCstruct.AddTerm(a)
+	eq2, _ := CCstruct.AddTerm(b)
+
+	CCstruct.Union(eq1, eq2)
+	cccopy := CCstruct.Copy()
+	eq5, _ := CCstruct.AddTerm(fa)
+	eq3, _ := cccopy.AddTerm(fa)
+	eq4, _ := cccopy.AddTerm(fb)
+
+	cccopy.Union(eq3, eq4)
+	CCstruct.Union(eq2, eq5)
+
+	if !CCstruct.TestSameparent(eq1, eq2) {
+		t.Errorf("%v", CCstruct.ToString())
+	}
+	if !cccopy.TestSameparent(eq1, eq2) {
+		t.Errorf("%v ", cccopy.ToString())
+	}
+
+}
