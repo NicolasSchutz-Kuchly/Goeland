@@ -409,10 +409,10 @@ func (st State) Copy() State {
 
 	if Glob.IncrEq {
 		new_state.eqStruct = st.GetEqStruct()
-		new_state.ccEqStruct = st.GetccEqStruct()
+		new_state.ccEqStruct = st.GetccEqStruct().Copy()
 	} else {
 		new_state.eqStruct = eqStruct.NewEqStruct()
-		new_state.ccEqStruct = st.GetccEqStruct()
+		new_state.ccEqStruct = st.GetccEqStruct().Copy()
 	}
 
 	if Glob.IsDestructive() {

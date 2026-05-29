@@ -102,6 +102,9 @@ func (cc CCEqualityStruct) ToString() string {
 	return b.String()
 }
 
+/*
+partial copy of an eqterm (parent not deep and use empty)
+*/
 func (t *Eqterm) Copy() *Eqterm {
 	return &Eqterm{
 		term:   t.term,
@@ -111,7 +114,11 @@ func (t *Eqterm) Copy() *Eqterm {
 	}
 }
 
-func (cc *CCEqualityStruct) Copy() CCEqualityStruct {
+/**
+Deep copy of a CCEqualitystruct
+*/
+
+func (cc CCEqualityStruct) Copy() CCEqualityStruct {
 	newcc := NewCCEqualityStruct()
 
 	for index, listTerm := range cc.classes {
@@ -255,6 +262,10 @@ func (cc *CCEqualityStruct) TestSameparent(term1 *Eqterm, term2 *Eqterm) bool {
 	return Find(term1).Equals(Find(term2))
 }
 
+/*
+for each term check if another term with the same symbol have equivalent arguments
+if true : union with the 2 terms
+*/
 func (cc *CCEqualityStruct) Congruence() bool {
 	res := false
 	for _, termlist := range cc.classes {

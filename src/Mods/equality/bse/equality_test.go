@@ -439,19 +439,19 @@ func TestConstraints2(t *testing.T) {
 func TestConstraints3(t *testing.T) {
 	/* Consistent and relevant */
 
-	tp_x_ffx := eqStruct.MakeTermPair(a, fx)
-	constraint_fx_a := MakeConstraint(PREC, tp_x_ffx)
+	tp_fx_fa := eqStruct.MakeTermPair(fx, fa)
+	constraint_fx_fa := MakeConstraint(PREC, tp_fx_fa)
 	cs := makeEmptyConstraintStruct()
-	append := cs.appendIfConsistent(constraint_fx_a)
-
-	t.Fatalf("Error:%v / %v / %v ", append, cs.getPrec().toString(), constraint_fx_a.toString())
-
+	append := cs.appendIfConsistent(constraint_fx_fa)
+	if !append || len(cs.getPrec()) != 1 {
+		t.Fatalf("Error: %v and %v is not the expected PREC list. Expected consistent and %v", append, cs.getPrec().toString(), constraint_fx_fa.toString())
+	}
 }
 
 func TestConstraints4(t *testing.T) {
 	/* First constraint is consistent, second is not consistent with the first one */
 	/*
-	* On accepte les cas comme f(f(x)) < a et a < f(x)
+	* On accepte pas les cas comme x < a et a < x
 	 */
 
 	tp_fx_a := eqStruct.MakeTermPair(x, a)
@@ -510,13 +510,12 @@ func TestConstaintes7(t *testing.T) {
 	/* consistent, should return X,a and Y, b */
 	tp_fxy_fab := eqStruct.MakeTermPair(fxy, fab)
 	constraint_fxy_fab := MakeConstraint(EQ, tp_fxy_fab)
-	// append :=
-	cs.appendIfConsistent(constraint_fxy_fab)
-	/*
-		if !append || len(cs.getPrec()) > 0 {
-			t.Fatalf("Error: %v and %v is not the expected PREC list. Expected consistent and empty PREC list", append, cs.getPrec().toString())
-		}
-	*/
+	append := cs.appendIfConsistent(constraint_fxy_fab)
+
+	if !append || len(cs.getPrec()) > 0 {
+		t.Fatalf("Error: %v and %v is not the expected PREC list. Expected consistent and empty PREC list", append, cs.getPrec().toString())
+	}
+
 }
 
 func TestConstaintes8(t *testing.T) {
@@ -525,21 +524,20 @@ func TestConstaintes8(t *testing.T) {
 	/* consistent, should return X,a and Y, b */
 	tp_fxa_fay := eqStruct.MakeTermPair(fxa, fay)
 	constraint_fxa_fay := MakeConstraint(EQ, tp_fxa_fay)
-	// append :=
-	cs.appendIfConsistent(constraint_fxa_fay)
-	/*
-		if !append || len(cs.getPrec()) > 0 {
-			t.Fatalf("Error: %v and %v is not the expected PREC list. Expected consistent and empty PREC list", append, cs.getPrec().toString())
-		}
-	*/
+	append := cs.appendIfConsistent(constraint_fxa_fay)
+
+	if !append || len(cs.getPrec()) > 0 {
+		t.Fatalf("Error: %v and %v is not the expected PREC list. Expected consistent and empty PREC list", append, cs.getPrec().toString())
+	}
+
 }
 
 func TestConstaintes9(t *testing.T) {
 	cs := makeEmptyConstraintStruct()
 
-	/* consistent, should return X,a and Y, b */
+	/* consistent, should return X,a*/
 	tp_gga_ggx := eqStruct.MakeTermPair(gga, ggx)
-	constraint_gga_ggx := MakeConstraint(PREC, tp_gga_ggx)
+	constraint_gga_ggx := MakeConstraint(EQ, tp_gga_ggx)
 	append := cs.appendIfConsistent(constraint_gga_ggx)
 
 	if !append || cs.getPrec().Len() > 0 {
@@ -553,10 +551,11 @@ func TestConstaintes9(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 // Two identical deferred constraints: the second must be accepted (idempotent).
-// f(X) ≺ a  added twice → still only one entry in prec list.
+//
+//	a ≺ f(X) added twice → still only one entry in prec list.
 func TestConstraints_Idempotent(t *testing.T) {
-	tp_fx_a := eqStruct.MakeTermPair(fx, a)
-	c := MakeConstraint(PREC, tp_fx_a)
+	tp_a_x := eqStruct.MakeTermPair(a, x)
+	c := MakeConstraint(PREC, tp_a_x)
 	cs := makeEmptyConstraintStruct()
 
 	res1 := cs.appendIfConsistent(c)
@@ -571,10 +570,10 @@ func TestConstraints_Idempotent(t *testing.T) {
 }
 
 // Two distinct deferred constraints that are compatible: both must be accepted.
-// f(X) ≺ a  and  g(Y) ≺ b  — different metas, no conflict.
+// X ≺ a  and  Y ≺ b  — different metas, no conflict.
 func TestConstraints_TwoCompatibleDeferred(t *testing.T) {
-	c1 := MakeConstraint(PREC, eqStruct.MakeTermPair(fx, a))
-	c2 := MakeConstraint(PREC, eqStruct.MakeTermPair(fy, b))
+	c1 := MakeConstraint(PREC, eqStruct.MakeTermPair(x, a))
+	c2 := MakeConstraint(PREC, eqStruct.MakeTermPair(y, b))
 	cs := makeEmptyConstraintStruct()
 
 	if !cs.appendIfConsistent(c1) {
@@ -703,20 +702,20 @@ func TestConstraints_EQThenPREC_Satisfied(t *testing.T) {
 	}
 }
 
-// Deferred PREC f(X) ≺ a, then EQ X ≃ a.
-// Applying X→a to the deferred constraint gives f(a) ≺ a — violated.
+// Deferred PREC X ≺ a, then EQ X ≃ a.
+// Applying X→a to the deferred constraint gives a ≺ a — violated.
 // The EQ must be rejected because it breaks the stored PREC constraint.
 func TestConstraints_PRECThenEQ_Conflict(t *testing.T) {
 	cs := makeEmptyConstraintStruct()
 
-	cPREC := MakeConstraint(PREC, eqStruct.MakeTermPair(fx, a))
+	cPREC := MakeConstraint(PREC, eqStruct.MakeTermPair(x, a))
 	if !cs.appendIfConsistent(cPREC) {
-		t.Fatalf("f(X) ≺ a should be deferred")
+		t.Fatalf("X ≺ a should be deferred")
 	}
 
 	cEQ := MakeConstraint(EQ, eqStruct.MakeTermPair(x, a))
 	if cs.appendIfConsistent(cEQ) {
-		t.Fatalf("X ≃ a should be rejected: it instantiates f(X) ≺ a to f(a) ≺ a which is violated")
+		t.Fatalf("X ≃ a should be rejected: it instantiates X ≺ a to a ≺ a which is violated")
 	}
 }
 
@@ -802,7 +801,7 @@ func TestConstraintStruct_Empty(t *testing.T) {
 // After a successful PREC insertion the struct is no longer empty.
 func TestConstraintStruct_NotEmptyAfterInsert(t *testing.T) {
 	cs := makeEmptyConstraintStruct()
-	c := MakeConstraint(PREC, eqStruct.MakeTermPair(fx, a))
+	c := MakeConstraint(PREC, eqStruct.MakeTermPair(a, x))
 	cs.appendIfConsistent(c)
 	if cs.isEmpty() {
 		t.Fatalf("Struct should not be empty after inserting a deferred constraint")
@@ -812,13 +811,13 @@ func TestConstraintStruct_NotEmptyAfterInsert(t *testing.T) {
 // copy() must produce a deep copy: mutating the copy must not affect the original.
 func TestConstraintStruct_Copy(t *testing.T) {
 	cs := makeEmptyConstraintStruct()
-	c := MakeConstraint(PREC, eqStruct.MakeTermPair(fx, a))
+	c := MakeConstraint(PREC, eqStruct.MakeTermPair(x, a))
 	cs.appendIfConsistent(c)
 
 	csCopy := cs.copy()
 
 	// Add a new constraint only to the copy.
-	c2 := MakeConstraint(PREC, eqStruct.MakeTermPair(fy, b))
+	c2 := MakeConstraint(PREC, eqStruct.MakeTermPair(y, b))
 	csCopy.appendIfConsistent(c2)
 
 	if len(cs.getPrec()) != 1 {
@@ -836,9 +835,9 @@ func TestConstraintsEQ_IdentitySubst(t *testing.T) {
 	s.Set(x, x)
 	cs.setSubst(s)
 
-	// f(X) ≺ a with a substitution that maps X→X: effectively no change.
-	cPREC := MakeConstraint(PREC, eqStruct.MakeTermPair(fx, a))
+	// X ≺ a with a substitution that maps X→X: effectively no change.
+	cPREC := MakeConstraint(PREC, eqStruct.MakeTermPair(x, a))
 	if !cs.appendIfConsistent(cPREC) {
-		t.Fatalf("f(X) ≺ a should still be deferred as consistent with identity subst")
+		t.Fatalf("X ≺ a should still be deferred as consistent with identity subst")
 	}
 }

@@ -161,6 +161,74 @@ func (m *Machine) trySubstituteMeta(i AST.Term, j AST.Term) Status {
 	m.meta = new_meta
 	return Status(SUCCESS)
 }
+func robinsonUnify(term1, term2 AST.Term, s Substitutions) Substitutions {
+	term1 = walkSubst(term1, s)
+	term2 = walkSubst(term2, s)
+
+	if term1.Equals(term2) {
+		return s
+	}
+
+	switch t1 := term1.(type) {
+	case AST.Meta:
+		if !OccurCheckValid(t1, term2) {
+			return Failure()
+		}
+		s.Set(t1, term2)
+		EliminateMeta(&s)
+		Eliminate(&s)
+		return s
+
+	case AST.Fun:
+		switch t2 := term2.(type) {
+		case AST.Meta:
+			if !OccurCheckValid(t2, term1) {
+				return Failure()
+			}
+			s.Set(t2, term1)
+			EliminateMeta(&s)
+			Eliminate(&s)
+			return s
+
+		case AST.Fun:
+			if !t1.GetID().Equals(t2.GetID()) {
+				return Failure()
+			}
+			args1 := t1.GetArgs().GetSlice()
+			args2 := t2.GetArgs().GetSlice()
+			if len(args1) != len(args2) {
+				return Failure()
+			}
+			for i := range args1 {
+				s = robinsonUnify(args1[i].Copy(), args2[i].Copy(), s)
+				if s.Equals(Failure()) {
+					return Failure()
+				}
+			}
+			return s
+
+		default:
+			return Failure()
+		}
+
+	default:
+		// Var or any other term kind: not expected after Skolemisation.
+		return Failure()
+	}
+}
+
+// walkSubst chases meta-variable bindings in s until reaching an unbound
+// meta or a non-meta term.
+func walkSubst(t AST.Term, s Substitutions) AST.Term {
+	for t.IsMeta() {
+		val, idx := s.Get(t.ToMeta())
+		if idx == -1 {
+			break
+		}
+		t = val
+	}
+	return t
+}
 
 func AddUnification(term1, term2 AST.Term, subst Substitutions) Substitutions {
 	debug(
@@ -172,35 +240,37 @@ func AddUnification(term1, term2 AST.Term, subst Substitutions) Substitutions {
 				subst.ToString())
 		}),
 	)
-	// unify with ct only if the term already has an unification or if there is 2 fun. Just add it and eliminate otherwise.
-	t1v, _ := subst.Get(term1.ToMeta())
-	t2v, _ := subst.Get(term2.ToMeta())
-	if (term1.IsMeta() && HasSubst(subst, term1.ToMeta()) && !t1v.Equals(term2)) ||
-		(term2.IsMeta() && HasSubst(subst, term2.ToMeta()) && !t2v.Equals(term1)) ||
-		(term1.IsFun() && term2.IsFun()) {
-		m := makeMachine()
-		m.meta = subst.Copy()
-		if m.addUnifications(term1, term2) == SUCCESS {
-			return m.meta
+	return robinsonUnify(term1, term2, subst)
+	/*
+		// unify with ct only if the term already has an unification or if there is 2 fun. Just add it and eliminate otherwise.
+		t1v, _ := subst.Get(term1.ToMeta())
+		t2v, _ := subst.Get(term2.ToMeta())
+		if (term1.IsMeta() && HasSubst(subst, term1.ToMeta()) && !t1v.Equals(term2)) ||
+			(term2.IsMeta() && HasSubst(subst, term2.ToMeta()) && !t2v.Equals(term1)) ||
+			(term1.IsFun() && term2.IsFun()) {
+			m := makeMachine()
+			m.meta = subst.Copy()
+			if m.addUnifications(term1, term2) == SUCCESS {
+				return m.meta
+			} else {
+				return Failure()
+			}
 		} else {
-			return Failure()
-		}
-	} else {
-		switch {
-		case term1.IsMeta():
-			subst.Set(term1.ToMeta(), term2)
-			EliminateMeta(&subst)
-			Eliminate(&subst)
-			return subst
-		case term2.IsMeta():
-			subst.Set(term2.ToMeta(), term1)
-			EliminateMeta(&subst)
-			Eliminate(&subst)
-			return subst
-		default:
-			return Failure()
-		}
-	}
+			switch {
+			case term1.IsMeta():
+				subst.Set(term1.ToMeta(), term2)
+				EliminateMeta(&subst)
+				Eliminate(&subst)
+				return subst
+			case term2.IsMeta():
+				subst.Set(term2.ToMeta(), term1)
+				EliminateMeta(&subst)
+				Eliminate(&subst)
+				return subst
+			default:
+				return Failure()
+			}
+		}*/
 }
 
 /* Adds the unifications found to the meta substitutions from running the algorithm on term1 and term2. */

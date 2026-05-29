@@ -158,8 +158,8 @@ func (cs *ConstraintStruct) isConsistentWithPrec(c Constraint) bool {
 // Checks unifiability against the existing substitution, then verifies that
 // the merged substitution does not violate any deferred PREC constraint.
 func (cs *ConstraintStruct) isConsistentWithEQ(c Constraint) bool {
-	t1, t2 := c.getTP().GetT1(), c.getTP().GetT2()
 
+	t1, t2 := c.getTP().GetT1(), c.getTP().GetT2()
 	// Fast path: isolated unifiability check before touching global state.
 	if Unif.AddUnification(t1.Copy(), t2.Copy(), Unif.MakeEmptySubstitution()).Equals(Unif.Failure()) {
 		return false
