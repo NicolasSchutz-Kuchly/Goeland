@@ -41,8 +41,15 @@ import (
 	"strings"
 
 	"github.com/GoelandProver/Goeland/AST"
+	"github.com/GoelandProver/Goeland/Glob"
 	"github.com/GoelandProver/Goeland/Lib"
 )
+
+var debug Glob.Debugger
+
+func InitDebugger() {
+	debug = Glob.CreateDebugger("plugin.equality")
+}
 
 type CCEqualityStruct struct {
 	classes map[int][]*Eqterm
@@ -62,15 +69,28 @@ add its args in the cc struct too
 if the term is already in the CCstruct do nothing
 */
 func (cc *CCEqualityStruct) AddTerm(t AST.Term) (*Eqterm, int) {
+
+	debug(Lib.MkLazy(func() string {
+		return fmt.Sprintf("try adding %v to the CCstruct", t.ToString())
+	}))
 	if contain := cc.RetrieveEqTerm(t); contain != nil {
+		debug(Lib.MkLazy(func() string {
+			return fmt.Sprintf("%v already in the CCstruct", t.ToString())
+		}))
 		return contain, contain.len
 	}
+
+	debug(Lib.MkLazy(func() string {
+		return fmt.Sprintf("Add %v to the CCstruct", t.ToString())
+	}))
 
 	e := NewEqTerm(&t)
 	e.SetParent(e)
 	lenmax := 1
 	lenmaj := 1
-
+	debug(Lib.MkLazy(func() string {
+		return fmt.Sprintf("Check for arguments to add")
+	}))
 	if f, ok := t.(AST.Fun); ok {
 		for indice, arg := range f.GetArgs().GetSlice() {
 			term, leng := cc.AddTerm(arg)
@@ -184,6 +204,9 @@ func (cc *CCEqualityStruct) CreateParent(e *Eqterm) bool {
 	switch fun := e.term.(type) {
 
 	case AST.Fun:
+		debug(Lib.MkLazy(func() string {
+			return fmt.Sprintf("try to normalize %v", e.term.ToString())
+		}))
 		args := Lib.List[AST.Term]{}
 
 		for _, k := range e.use {
@@ -197,7 +220,16 @@ func (cc *CCEqualityStruct) CreateParent(e *Eqterm) bool {
 		if !testExist {
 			newparent := AST.MakeFun(fun.GetP(), Lib.ListCpy(fun.GetTyArgs()), args, fun.GetMetas())
 			l, _ := cc.AddTerm(newparent)
+			l.SetParent(l)
+			debug(Lib.MkLazy(func() string {
+				return fmt.Sprintf("replace %v by %v", e.term.ToString(), newparent.ToString())
+			}))
 			Find(e).SetParent(Find(l))
+		} else {
+			debug(Lib.MkLazy(func() string {
+				return fmt.Sprintf("%v is already normalized ", e.term.ToString())
+			}))
+
 		}
 	default:
 	}
@@ -247,6 +279,9 @@ func (cc *CCEqualityStruct) Union(term *Eqterm, term2 *Eqterm) {
 		pour le choix du parent regarde le nombre d'arguments puis la profondeur
 	*/
 	if !px.Equals(py) {
+		debug(Lib.MkLazy(func() string {
+			return fmt.Sprintf("merge %v and %v classes", x.term.ToString(), y.term.ToString())
+		}))
 		if len(px.use) > len(py.use) {
 			px, py = py, px
 		} else if px.len > py.len && len(px.use) == len(py.use) {
@@ -254,6 +289,10 @@ func (cc *CCEqualityStruct) Union(term *Eqterm, term2 *Eqterm) {
 		}
 		py.SetParent(px)
 
+	} else {
+		debug(Lib.MkLazy(func() string {
+			return fmt.Sprintf("%v and %v already in the same class", x.term.ToString(), y.term.ToString())
+		}))
 	}
 }
 
@@ -282,6 +321,9 @@ func (cc *CCEqualityStruct) Congruence() bool {
 				pe := Find(e)
 				if !pe.Equals(pe2) {
 					if EqualMaps(e2.use, e.use) {
+						debug(Lib.MkLazy(func() string {
+							return fmt.Sprintf("Congruence on %v and %v", e.term.ToString(), e2.term.ToString())
+						}))
 						cc.Union(e, e2)
 						res = true
 					}

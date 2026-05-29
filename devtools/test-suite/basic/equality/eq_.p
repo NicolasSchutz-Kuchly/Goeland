@@ -1,9 +1,9 @@
 fof(ax1, axiom,
-    ! [X,Y] : f(X,a) = g(b,Y)).
+    a = c).
 
-fof(ax1, axiom,
-    p(f(c,a))).
+fof(ax2, axiom,
+    b = d).
 
+fof(conj, conjecture,
+    f(a,b) = f(c,d)).
 
-fof(axa, conjecture,
-   p(g(b,c))).

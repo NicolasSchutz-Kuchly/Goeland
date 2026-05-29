@@ -891,7 +891,6 @@ func TestFullPipelineConsistency(t *testing.T) {
 }
 
 func TestCopy1(t *testing.T) {
-	/* union 2 simple eqterm */
 	CCstruct := eqStruct.NewCCEqualityStruct()
 
 	eq1, _ := CCstruct.AddTerm(a)

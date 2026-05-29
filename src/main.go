@@ -56,6 +56,7 @@ import (
 	"github.com/GoelandProver/Goeland/Mods/dmt"
 	"github.com/GoelandProver/Goeland/Mods/equality/bse"
 	"github.com/GoelandProver/Goeland/Mods/equality/cc"
+	"github.com/GoelandProver/Goeland/Mods/equality/eqStruct"
 	"github.com/GoelandProver/Goeland/Mods/gs3"
 	"github.com/GoelandProver/Goeland/Parser"
 	"github.com/GoelandProver/Goeland/Search"
@@ -218,6 +219,7 @@ func initDebuggers() {
 	dmt.InitDebugger()
 	bse.InitDebugger()
 	cc.InitDebugger()
+	eqStruct.InitDebugger()
 	incremental.InitDebugger()
 	Search.InitDebugger()
 	Typing.InitDebugger()

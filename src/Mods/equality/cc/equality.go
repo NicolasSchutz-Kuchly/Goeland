@@ -56,7 +56,6 @@ func InitDebugger() {
 
 func Enable() {
 	SetTryEquality()
-	// eqStruct.NewEqStruct = TODO
 }
 
 func SetTryEquality() {
@@ -123,6 +122,7 @@ func testresult(CCstruct eqStruct.CCEqualityStruct, atomic Lib.List[AST.Form]) b
 
 	for _, i := range atomicv2.GetSlice() {
 
+		/* check there there are no a & ~a in atomicv2*/
 		b, _ := newtreeneg.Unify(i)
 
 		if b {
@@ -157,7 +157,7 @@ func testInequality(ineq Lib.List[eqStruct.TermPair]) bool {
 
 /*
 *
-create an eqstruct from a list of atomics and a tree pos
+take an eqstruct and add the new atomics in it
 */
 func EqStructCreateSimple(CCstruct eqStruct.CCEqualityStruct, tree_pos Unif.DataStructure, atomic Lib.List[AST.Form]) eqStruct.CCEqualityStruct {
 	/*create a class for each term */
@@ -188,8 +188,12 @@ func addEqualityConst(CCstruct eqStruct.CCEqualityStruct, tree_pos Unif.DataStru
 	eq := retrieveEqualities(tree_pos.Copy())
 
 	for _, b := range eq {
+
 		eq1 := CCstruct.RetrieveEqTerm(b.GetT1())
 		eq2 := CCstruct.RetrieveEqTerm(b.GetT2())
+		debug(Lib.MkLazy(func() string {
+			return fmt.Sprintf("%v = %v , try to merge", b.GetT1().ToString(), b.GetT2().ToString())
+		}))
 		CCstruct.Union(eq1, eq2)
 	}
 
