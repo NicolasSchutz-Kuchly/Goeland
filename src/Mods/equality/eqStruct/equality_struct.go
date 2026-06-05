@@ -210,6 +210,7 @@ func (cc *CCEqualityStruct) CreateParent(e *Eqterm) bool {
 		args := Lib.List[AST.Term]{}
 
 		for _, k := range e.use {
+			//TODO peut bug si les args sont des meta // mais on doit etre sur des cas ground
 			res := Find(k)
 			if !res.Equals(k) {
 				testExist = false
