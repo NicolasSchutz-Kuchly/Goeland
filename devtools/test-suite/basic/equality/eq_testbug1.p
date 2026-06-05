@@ -1,23 +1,18 @@
 %not valid
 
-fof(ax16,axiom,
-     a != b).
+fof(eq,axiom,
+    a != b).
 
 fof(coaa1,axiom,
-      ? [W] :
-        ( left(W)) ).
-
+( left(a)) ).
 
 fof(co1zz,axiom,
-      ? [X] :
-        ( right(X)) ).
-
+( right(b)) ).
 
 fof(ax12,axiom,
-    ! [U] :
-      ( left(U)
-     => ~ goal(U) ) ).
-
+    ! [X] :
+      ( left(X)
+     => ~ goal(X) ) ).
 
 fof(ax14,axiom,
     ! [U] :
@@ -35,9 +30,5 @@ fof(ax16,axiom,
       ( rightbisbis(U)
      => goal(U) ) ).
 
-
-
-fof(co1,conjecture,
-     ~ ? [W,X] :
-        ( left(W)
-        & right(X)) ).
+fof(ax2, conjecture,
+    $false).

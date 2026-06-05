@@ -34,7 +34,7 @@
 * This file contains the rule strucut for equality reasoning
 **/
 
-package bse3
+package bse2
 
 import (
 	"fmt"

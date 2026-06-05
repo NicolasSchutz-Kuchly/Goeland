@@ -34,7 +34,7 @@
 * This file contains the type definition for equality reasonning.
 **/
 
-package bse3
+package bse2
 
 import (
 	"fmt"

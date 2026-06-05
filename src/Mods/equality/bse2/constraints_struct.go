@@ -34,7 +34,7 @@
 * This file contains the type definition of a constraint struct for equality reasoning.
 **/
 
-package bse3
+package bse2
 
 import (
 	"fmt"

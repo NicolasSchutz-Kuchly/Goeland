@@ -168,10 +168,8 @@ func compareMetaFunInside(m AST.Meta, f AST.Fun, return_code int) (bool, compare
 		}
 
 		if is_comparable {
-			if res == 0 { // Comparable and return 0 : same symbol or same Meta (meta in this case)
+			if res == 0 { // Comparable and return 0 : same symbol or same Meta (m = f(...i...) in this case)
 				return true, makeCompareStruct(return_code, true, nil, nil)
-			} else {
-				return true, makeCompareStruct(res, true, nil, nil)
 			}
 		}
 		i++

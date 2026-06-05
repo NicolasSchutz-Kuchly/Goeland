@@ -34,7 +34,7 @@
 * This file contains the tests on equality.
 **/
 
-package bse3
+package bse2
 
 import (
 	"fmt"

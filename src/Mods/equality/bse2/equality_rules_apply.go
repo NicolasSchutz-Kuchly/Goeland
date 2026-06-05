@@ -34,7 +34,7 @@
 * This file contains the functions to apply a rule on an equality problem struct
 **/
 
-package bse3
+package bse2
 
 import (
 	"fmt"
